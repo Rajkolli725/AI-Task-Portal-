@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Task Portal</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --panel: #171a23;
+    --panel-alt: #1f232f;
+    --border: #2a2f3d;
+    --text: #e6e8ef;
+    --text-dim: #8b90a3;
+    --accent: #6d8bff;
+    --accent-dim: #3d4a7a;
+    --danger: #ff6d6d;
+    --success: #5fd68a;
+    --warn: #f5c359;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+  .wrap {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 32px 20px 80px;
+  }
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  h1 {
+    font-size: 22px;
+    margin: 0;
+    letter-spacing: -0.02em;
+  }
+  .stats {
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+    margin-bottom: 20px;
+  }
+  .add-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  input[type="text"], select, input[type="date"] {
+    background: var(--panel-alt);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 14px;
+    outline: none;
+  }
+  input[type="text"] {
+    flex: 1;
+    min-width: 180px;
+  }
+  input[type="text"]:focus, select:focus, input[type="date"]:focus {
+    border-color: var(--accent);
+  }
+  button {
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button:hover { opacity: 0.9; }
+  button.secondary {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-weight: 500;
+  }
+  .filters {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .filters button {
+    background: var(--panel-alt);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 6px 14px;
+    font-weight: 500;
+    font-size: 13px;
+  }
+  .filters button.active {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+    color: var(--text);
+  }
+  ul.tasks {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  li.task {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 8px;
+    background: var(--panel-alt);
+  }
+  li.task.done {
+    opacity: 0.5;
+  }
+  li.task.done .task-title {
+    text-decoration: line-through;
+  }
+  .checkbox {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    cursor: pointer;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+  }
+  .checkbox.checked {
+    background: var(--success);
+    border-color: var(--success);
+    color: #0f1117;
+  }
+  .task-body {
+    flex: 1;
+    min-width: 0;
+  }
+  .task-title {
+    font-size: 15px;
+  }
+  .task-meta {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--text-dim);
+    flex-wrap: wrap;
+  }
+  .badge {
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 11px;
+  }
+  .badge.high { background: rgba(255,109,109,0.15); color: var(--danger); }
+  .badge.medium { background: rgba(245,195,89,0.15); color: var(--warn); }
+  .badge.low { background: rgba(95,214,138,0.15); color: var(--success); }
+  .badge.overdue { background: rgba(255,109,109,0.2); color: var(--danger); }
+  .icon-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 4px 8px;
+  }
+  .icon-btn:hover { color: var(--danger); }
+  .empty {
+    text-align: center;
+    color: var(--text-dim);
+    padding: 40px 0;
+    font-size: 14px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>AI Task Portal</h1>
+    <div class="stats" id="stats"></div>
+  </header>
+
+  <div class="card">
+    <div class="add-row">
+      <input type="text" id="taskInput" placeholder="What needs to be done?" maxlength="200">
+      <select id="prioritySelect">
+        <option value="low">Low</option>
+        <option value="medium" selected>Medium</option>
+        <option value="high">High</option>
+      </select>
+      <input type="date" id="dueInput">
+      <button id="addBtn">Add Task</button>
+    </div>
+  </div>
+
+  <div class="filters">
+    <button data-filter="all" class="active">All</button>
+    <button data-filter="active">Active</button>
+    <button data-filter="done">Completed</button>
+    <button id="clearDone" class="secondary" style="margin-left:auto;">Clear Completed</button>
+  </div>
+
+  <ul class="tasks" id="taskList"></ul>
+  <div class="empty" id="emptyState" style="display:none;">No tasks yet. Add one above to get started.</div>
+</div>
+
+<script>
+  const STORAGE_KEY = 'ai-task-portal-tasks';
+  let tasks = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  let filter = 'all';
+
+  const taskInput = document.getElementById('taskInput');
+  const prioritySelect = document.getElementById('prioritySelect');
+  const dueInput = document.getElementById('dueInput');
+  const addBtn = document.getElementById('addBtn');
+  const taskList = document.getElementById('taskList');
+  const emptyState = document.getElementById('emptyState');
+  const statsEl = document.getElementById('stats');
+  const filterBtns = document.querySelectorAll('.filters button[data-filter]');
+  const clearDoneBtn = document.getElementById('clearDone');
+
+  function save() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+  }
+
+  function addTask() {
+    const title = taskInput.value.trim();
+    if (!title) return;
+    tasks.push({
+      id: crypto.randomUUID(),
+      title,
+      priority: prioritySelect.value,
+      due: dueInput.value || null,
+      done: false,
+      createdAt: new Date().toISOString()
+    });
+    taskInput.value = '';
+    dueInput.value = '';
+    save();
+    render();
+  }
+
+  function isOverdue(task) {
+    if (!task.due || task.done) return false;
+    const due = new Date(task.due + 'T23:59:59');
+    return due < new Date();
+  }
+
+  function render() {
+    let visible = tasks;
+    if (filter === 'active') visible = tasks.filter(t => !t.done);
+    if (filter === 'done') visible = tasks.filter(t => t.done);
+
+    taskList.innerHTML = '';
+    emptyState.style.display = visible.length === 0 ? 'block' : 'none';
+
+    visible
+      .slice()
+      .sort((a, b) => (a.done - b.done) || new Date(a.createdAt) - new Date(b.createdAt))
+      .forEach(task => {
+        const li = document.createElement('li');
+        li.className = 'task' + (task.done ? ' done' : '');
+
+        const checkbox = document.createElement('div');
+        checkbox.className = 'checkbox' + (task.done ? ' checked' : '');
+        checkbox.textContent = task.done ? '✓' : '';
+        checkbox.onclick = () => {
+          task.done = !task.done;
+          save();
+          render();
+        };
+
+        const body = document.createElement('div');
+        body.className = 'task-body';
+
+        const titleEl = document.createElement('div');
+        titleEl.className = 'task-title';
+        titleEl.textContent = task.title;
+
+        const meta = document.createElement('div');
+        meta.className = 'task-meta';
+
+        const prioBadge = document.createElement('span');
+        prioBadge.className = 'badge ' + task.priority;
+        prioBadge.textContent = task.priority;
+        meta.appendChild(prioBadge);
+
+        if (task.due) {
+          const dueBadge = document.createElement('span');
+          if (isOverdue(task)) {
+            dueBadge.className = 'badge overdue';
+            dueBadge.textContent = 'Overdue: ' + task.due;
+          } else {
+            dueBadge.textContent = 'Due: ' + task.due;
+          }
+          meta.appendChild(dueBadge);
+        }
+
+        body.appendChild(titleEl);
+        body.appendChild(meta);
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'icon-btn';
+        deleteBtn.textContent = '✕';
+        deleteBtn.title = 'Delete task';
+        deleteBtn.onclick = () => {
+          tasks = tasks.filter(t => t.id !== task.id);
+          save();
+          render();
+        };
+
+        li.appendChild(checkbox);
+        li.appendChild(body);
+        li.appendChild(deleteBtn);
+        taskList.appendChild(li);
+      });
+
+    const total = tasks.length;
+    const done = tasks.filter(t => t.done).length;
+    statsEl.textContent = total === 0 ? '' : `${done} / ${total} completed`;
+  }
+
+  addBtn.onclick = addTask;
+  taskInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') addTask();
+  });
+
+  filterBtns.forEach(btn => {
+    btn.onclick = () => {
+      filterBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      filter = btn.dataset.filter;
+      render();
+    };
+  });
+
+  clearDoneBtn.onclick = () => {
+    tasks = tasks.filter(t => !t.done);
+    save();
+    render();
+  };
+
+  render();
+</script>
+</body>
+</html>
