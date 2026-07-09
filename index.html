@@ -13,23 +13,38 @@
     --text: #e6e8ef;
     --text-dim: #8b90a3;
     --accent: #6d8bff;
+    --accent-2: #9d7bff;
     --accent-dim: #3d4a7a;
     --danger: #ff6d6d;
     --success: #5fd68a;
     --warn: #f5c359;
+    --shadow: 0 8px 24px rgba(0,0,0,0.35);
+    --shadow-sm: 0 2px 8px rgba(0,0,0,0.25);
+    --glow: 0 0 0 3px rgba(109,139,255,0.2);
   }
   * { box-sizing: border-box; }
   body {
     margin: 0;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background: var(--bg);
+    background:
+      radial-gradient(1200px 600px at 15% -10%, rgba(109,139,255,0.12), transparent),
+      radial-gradient(900px 500px at 110% 10%, rgba(157,123,255,0.10), transparent),
+      var(--bg);
+    background-attachment: fixed;
     color: var(--text);
     min-height: 100vh;
   }
   .wrap {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 32px 20px 80px;
+    max-width: 100%;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 32px 24px 24px;
+  }
+  #contentArea {
+    flex: 1;
+    display: flex;
+    min-height: 0;
   }
   header {
     display: flex;
@@ -43,24 +58,12 @@
     font-size: 22px;
     margin: 0;
     letter-spacing: -0.02em;
+    background: linear-gradient(90deg, var(--text), var(--accent-2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
   }
-  .stats {
-    font-size: 13px;
-    color: var(--text-dim);
-  }
-  .card {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 18px;
-    margin-bottom: 20px;
-  }
-  .add-row {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-  input[type="text"], select, input[type="date"] {
+  input[type="text"], select {
     background: var(--panel-alt);
     border: 1px solid var(--border);
     color: var(--text);
@@ -68,16 +71,14 @@
     padding: 10px 12px;
     font-size: 14px;
     outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
   }
-  input[type="text"] {
-    flex: 1;
-    min-width: 180px;
-  }
-  input[type="text"]:focus, select:focus, input[type="date"]:focus {
+  input[type="text"]:focus, select:focus {
     border-color: var(--accent);
+    box-shadow: var(--glow);
   }
   button {
-    background: var(--accent);
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
     color: white;
     border: none;
     border-radius: 8px;
@@ -85,110 +86,564 @@
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
   }
-  button:hover { opacity: 0.9; }
+  button:hover { opacity: 0.92; transform: translateY(-1px); box-shadow: var(--shadow); }
+  button:active { transform: translateY(0); }
   button.secondary {
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--text-dim);
-    font-weight: 500;
-  }
-  .filters {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 16px;
-    flex-wrap: wrap;
-  }
-  .filters button {
     background: var(--panel-alt);
     border: 1px solid var(--border);
     color: var(--text-dim);
-    padding: 6px 14px;
     font-weight: 500;
-    font-size: 13px;
+    box-shadow: none;
   }
-  .filters button.active {
-    background: var(--accent-dim);
+  button.secondary:hover {
     border-color: var(--accent);
     color: var(--text);
+    box-shadow: none;
   }
-  ul.tasks {
+  #tableNameHeading {
+    margin: 0 0 16px;
+  }
+  .table-tabs {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    margin-bottom: 0;
+    flex-wrap: wrap;
+  }
+  .table-tab-btn {
+    color: #1a1a1a;
+    padding: 10px 18px 8px;
+    font-weight: 700;
+    font-size: 13px;
+    border-radius: 10px 10px 0 0;
+    opacity: 0.75;
+  }
+  .table-tab-btn.active {
+    opacity: 1;
+    transform: translateY(-2px);
+    box-shadow: 0 -2px 8px rgba(0,0,0,0.3);
+  }
+  #tableControls {
+    padding-top: 14px;
+    border-top: 3px solid var(--border);
+    margin-bottom: 20px;
+  }
+  .search-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .search-row input[type="text"] {
+    flex: 1;
+    min-width: 200px;
+  }
+  .field-filter-wrap {
+    position: relative;
+    min-width: 180px;
+  }
+  .field-filter-wrap input[type="text"] {
+    width: 100%;
+    min-width: 180px;
+  }
+  .field-filter-menu {
+    position: absolute;
+    top: 44px;
+    left: 0;
+    right: 0;
+    max-height: 240px;
+    overflow-y: auto;
+    background: var(--panel-alt);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    z-index: 50;
+  }
+  .field-filter-option {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    color: var(--text);
+    font-weight: 500;
+    font-size: 13px;
+    padding: 8px 12px;
+  }
+  .field-filter-option:hover, .field-filter-option.highlighted {
+    background: var(--accent-dim);
+    transform: none;
+  }
+  .field-filter-empty {
+    padding: 8px 12px;
+    color: var(--text-dim);
+    font-size: 13px;
+  }
+  .action-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .action-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .modal-small {
+    width: 420px;
+  }
+  .table-content-row {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+    flex: 1;
+    min-height: 0;
+  }
+  .data-table-wrap {
+    flex: 1;
+    min-width: 0;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: var(--shadow-sm);
+    overflow: auto;
+  }
+  table.data-table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 13px;
+  }
+  table.data-table th, table.data-table td {
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    max-width: 260px;
+    overflow-wrap: break-word;
+  }
+  table.data-table th {
+    color: var(--text-dim);
+    background: var(--panel-alt);
+    font-weight: 700;
+    text-align: center;
+    position: sticky;
+    top: 0;
+  }
+  table.data-table tbody tr {
+    transition: background 0.1s;
+  }
+  table.data-table tbody tr:hover {
+    background: var(--panel-alt);
+  }
+  table.data-table tr:last-child td {
+    border-bottom: none;
+  }
+  .info-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 1px solid var(--accent);
+    background: transparent;
+    color: var(--accent);
+    font-size: 12px;
+    font-style: italic;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+  }
+  .info-icon-btn:hover {
+    background: var(--accent-dim);
+  }
+  .notes-popover {
+    position: fixed;
+    z-index: 50;
+    width: 320px;
+    max-width: 90vw;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    padding: 14px;
+  }
+  .notes-popover-field + .notes-popover-field {
+    margin-top: 12px;
+  }
+  .notes-popover-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+  .notes-popover-value {
+    font-size: 13px;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  table.data-table select {
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+  table.data-table textarea {
+    width: 200px;
+    min-height: 48px;
+    background: var(--panel-alt);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: 12px;
+    font-family: inherit;
+    resize: vertical;
+    white-space: normal;
+    outline: none;
+  }
+  table.data-table textarea:focus {
+    border-color: var(--accent);
+    box-shadow: var(--glow);
+  }
+  .category-tabs {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 6px;
+    flex-shrink: 0;
+    width: 34px;
+  }
+  .category-tab-btn {
+    writing-mode: vertical-rl;
+    color: #1a1a1a;
+    padding: 12px 6px;
+    font-weight: 700;
+    font-size: 11px;
+    border-radius: 0 10px 10px 0;
+    opacity: 0.75;
+    flex: 0 0 auto;
+  }
+  .category-tab-btn.active {
+    opacity: 1;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.3);
+  }
+  .empty {
+    flex: 1;
+    text-align: center;
+    color: var(--text-dim);
+    padding: 40px 20px;
+    font-size: 14px;
+    background: var(--panel);
+    border: 1px dashed var(--border);
+    border-radius: 10px;
+  }
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .avatar-wrap {
+    position: relative;
+  }
+  .avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    border: none;
+    color: white;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 0;
+    box-shadow: var(--shadow-sm);
+  }
+  .avatar:hover {
+    transform: translateY(-1px) scale(1.04);
+  }
+  .dropdown-menu {
+    position: absolute;
+    top: 48px;
+    right: 0;
+    min-width: 170px;
+    background: var(--panel-alt);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    z-index: 50;
+  }
+  .dropdown-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    color: var(--text);
+    font-weight: 500;
+    padding: 10px 14px;
+  }
+  .dropdown-item:hover {
+    background: var(--accent-dim);
+    transform: none;
+  }
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.65);
+    backdrop-filter: blur(2px);
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+  }
+  .modal-overlay:not([hidden]) {
+    display: flex;
+  }
+  .modal {
+    width: 820px;
+    max-width: 94vw;
+    max-height: 88vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .modal-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .modal-header h2 {
+    margin: 0;
+    font-size: 17px;
+  }
+  .modal-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+  }
+  .modal-tab-btn {
+    flex: 1;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    border-bottom: 2px solid transparent;
+    box-shadow: none;
+    color: var(--text-dim);
+    font-weight: 600;
+    padding: 12px;
+  }
+  .modal-tab-btn:hover {
+    color: var(--text);
+    transform: none;
+  }
+  .modal-tab-btn.active {
+    color: var(--text);
+    border-bottom-color: var(--accent);
+  }
+  .modal-body {
+    padding: 8px 20px;
+    overflow-y: auto;
+  }
+  .page-settings-panel label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    margin: 12px 0 6px;
+  }
+  .page-settings-panel textarea {
+    width: 100%;
+    background: var(--panel-alt);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-family: inherit;
+    resize: vertical;
+    outline: none;
+  }
+  .page-settings-panel textarea:focus {
+    border-color: var(--accent);
+    box-shadow: var(--glow);
+  }
+  .page-settings-panel .hint {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 6px;
+  }
+  .modal-error {
+    background: rgba(255,109,109,0.12);
+    color: var(--danger);
+    border-top: 1px solid var(--border);
+    padding: 12px 20px;
+    font-size: 13px;
+    white-space: pre-line;
+  }
+  .accordion {
     list-style: none;
     margin: 0;
     padding: 0;
   }
-  li.task {
+  .accordion-item {
+    border-bottom: 1px solid var(--border);
+  }
+  .accordion-item:last-child {
+    border-bottom: none;
+  }
+  .accordion-header {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 14px 16px;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    margin-bottom: 8px;
+    gap: 8px;
+    padding: 14px 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 8px;
+    transition: background 0.15s;
+  }
+  .accordion-header:hover {
     background: var(--panel-alt);
   }
-  li.task.done {
-    opacity: 0.5;
+  .accordion-chevron {
+    display: inline-block;
+    color: var(--text-dim);
+    transition: transform 0.15s;
   }
-  li.task.done .task-title {
-    text-decoration: line-through;
+  .accordion-header.open .accordion-chevron {
+    transform: rotate(90deg);
   }
-  .checkbox {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    border: 2px solid var(--border);
-    cursor: pointer;
-    flex-shrink: 0;
+  .accordion-title {
+    flex: 1;
+  }
+  .accordion-body {
+    padding: 4px 4px 16px;
+  }
+  .query-textarea {
+    width: 100%;
+    background: var(--panel-alt);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-family: inherit;
+    resize: vertical;
+    outline: none;
+  }
+  .query-textarea:focus {
+    border-color: var(--accent);
+    box-shadow: var(--glow);
+  }
+  .slush-bucket {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
+    align-items: stretch;
+    gap: 10px;
   }
-  .checkbox.checked {
-    background: var(--success);
-    border-color: var(--success);
-    color: #0f1117;
-  }
-  .task-body {
+  .slush-column {
     flex: 1;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
   }
-  .task-title {
-    font-size: 15px;
+  .slush-heading {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-dim);
+    margin-bottom: 6px;
   }
-  .task-meta {
+  .slush-select {
+    flex: 1;
+    min-height: 320px;
+    background: var(--panel-alt);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 4px;
+    font-size: 13px;
+    outline: none;
+  }
+  .slush-select:focus {
+    border-color: var(--accent);
+  }
+  .slush-select option {
+    padding: 5px 8px;
+    border-radius: 4px;
+  }
+  .slush-select option:checked {
+    background: var(--accent-dim);
+    color: var(--text);
+  }
+  .slush-move-buttons, .slush-reorder-buttons {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .slush-btn {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    font-size: 16px;
+    line-height: 1;
+  }
+  .modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    border-top: 1px solid var(--border);
+  }
+  .footer-right {
     display: flex;
     gap: 8px;
-    margin-top: 4px;
-    font-size: 12px;
-    color: var(--text-dim);
-    flex-wrap: wrap;
   }
-  .badge {
-    padding: 2px 8px;
-    border-radius: 6px;
-    font-weight: 600;
-    font-size: 11px;
+  .switch {
+    position: relative;
+    display: inline-block;
+    width: 38px;
+    height: 22px;
+    flex-shrink: 0;
   }
-  .badge.high { background: rgba(255,109,109,0.15); color: var(--danger); }
-  .badge.medium { background: rgba(245,195,89,0.15); color: var(--warn); }
-  .badge.low { background: rgba(95,214,138,0.15); color: var(--success); }
-  .badge.overdue { background: rgba(255,109,109,0.2); color: var(--danger); }
-  .icon-btn {
-    background: transparent;
-    border: none;
-    color: var(--text-dim);
+  .switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+  .slider {
+    position: absolute;
+    inset: 0;
+    background: var(--border);
+    border-radius: 22px;
     cursor: pointer;
-    font-size: 16px;
-    padding: 4px 8px;
+    transition: 0.2s;
   }
-  .icon-btn:hover { color: var(--danger); }
-  .empty {
-    text-align: center;
-    color: var(--text-dim);
-    padding: 40px 0;
-    font-size: 14px;
+  .slider::before {
+    content: "";
+    position: absolute;
+    height: 16px;
+    width: 16px;
+    left: 3px;
+    bottom: 3px;
+    background: white;
+    border-radius: 50%;
+    transition: 0.2s;
+  }
+  .switch input:checked + .slider {
+    background: var(--success);
+  }
+  .switch input:checked + .slider::before {
+    transform: translateX(16px);
   }
 </style>
 </head>
@@ -196,170 +651,1399 @@
 <div class="wrap">
   <header>
     <h1>AI Task Portal</h1>
-    <div class="stats" id="stats"></div>
+    <div class="header-right">
+      <div class="avatar-wrap" id="avatarWrap">
+        <button class="avatar" id="avatarBtn" aria-haspopup="true" aria-expanded="false">RK</button>
+        <div class="dropdown-menu" id="dropdownMenu" hidden>
+          <button class="dropdown-item" id="configMenuItem">Configuration</button>
+        </div>
+      </div>
+    </div>
   </header>
 
-  <div class="card">
-    <div class="add-row">
-      <input type="text" id="taskInput" placeholder="What needs to be done?" maxlength="200">
-      <select id="prioritySelect">
-        <option value="low">Low</option>
-        <option value="medium" selected>Medium</option>
-        <option value="high">High</option>
-      </select>
-      <input type="date" id="dueInput">
-      <button id="addBtn">Add Task</button>
+  <div class="table-tabs" id="tableTabs"></div>
+
+  <div id="tableControls">
+    <h1 id="tableNameHeading"></h1>
+
+    <div class="search-row" id="searchRow">
+      <input type="text" id="searchInput" placeholder="Search...">
+      <div class="field-filter-wrap" id="fieldFilterWrap">
+        <input type="text" id="fieldFilterInput" placeholder="All Fields" autocomplete="off">
+        <div class="field-filter-menu" id="fieldFilterMenu" hidden></div>
+      </div>
+    </div>
+
+    <div class="action-row">
+      <div class="action-left">
+        <button class="secondary" id="loadPreviousDataBtn">Load Previous</button>
+        <input type="file" id="loadPreviousInput" accept=".xlsx" hidden>
+        <button class="secondary" id="loadLiveDataBtn">Load Live Data</button>
+        <button class="secondary" id="triageBtn">Triage</button>
+        <button id="saveBtn">Save</button>
+      </div>
     </div>
   </div>
 
-  <div class="filters">
-    <button data-filter="all" class="active">All</button>
-    <button data-filter="active">Active</button>
-    <button data-filter="done">Completed</button>
-    <button id="clearDone" class="secondary" style="margin-left:auto;">Clear Completed</button>
-  </div>
-
-  <ul class="tasks" id="taskList"></ul>
-  <div class="empty" id="emptyState" style="display:none;">No tasks yet. Add one above to get started.</div>
+  <div id="contentArea"></div>
 </div>
 
+<div class="modal-overlay" id="configModalOverlay" hidden>
+  <div class="modal" id="configModal" role="dialog" aria-modal="true" aria-label="Configuration">
+    <div class="modal-header">
+      <h2>Configuration</h2>
+    </div>
+    <div class="modal-tabs">
+      <button class="modal-tab-btn active" data-modal-tab="pageSettings">Page Settings</button>
+      <button class="modal-tab-btn" data-modal-tab="tableConfig">Table Configuration</button>
+      <button class="modal-tab-btn" data-modal-tab="queries">Queries</button>
+    </div>
+    <div class="modal-body">
+      <div id="pageSettingsPanel" class="page-settings-panel">
+        <label for="tableNamesInput">Table names (comma-separated)</label>
+        <textarea id="tableNamesInput" rows="3"></textarea>
+        <div class="hint">Each value becomes a table (accordion) in Table Configuration. Must be non-empty, non-blank, and unique.</div>
+
+        <label for="complexityLabelsInput">Task complexity labels (comma-separated)</label>
+        <textarea id="complexityLabelsInput" rows="3"></textarea>
+        <div class="hint">These become the vertical tabs on each table and the options in each row's "Task complexity" dropdown. Must be non-empty, non-blank, and unique.</div>
+      </div>
+      <div id="tableConfigPanel" hidden>
+        <ul class="accordion" id="tablesAccordion"></ul>
+      </div>
+      <div id="queriesPanel" hidden>
+        <ul class="accordion" id="queriesAccordion"></ul>
+      </div>
+    </div>
+    <div class="modal-error" id="configError" hidden></div>
+    <div class="modal-footer">
+      <button class="secondary" id="resetBtn">Reset to Default</button>
+      <div class="footer-right">
+        <button class="secondary" id="cancelBtn">Cancel</button>
+        <button id="applyBtn">Apply</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="saveOptionsOverlay" hidden>
+  <div class="modal modal-small" id="saveOptionsModal" role="dialog" aria-modal="true" aria-label="Save export">
+    <div class="modal-header">
+      <h2>Save Export</h2>
+    </div>
+    <div class="modal-body">
+      <p style="color: var(--text-dim); font-size: 13px; margin: 4px 0 12px;">Overwrite uses the same filename every time (your browser decides whether that replaces the previous download or renames it). Save as a new copy adds a timestamp so it never collides.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="secondary" id="saveCancelBtn">Cancel</button>
+      <div class="footer-right">
+        <button class="secondary" id="saveOverwriteBtn">Overwrite</button>
+        <button id="saveAsCopyBtn">Save as New Copy</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="notes-popover" id="notesPopover" hidden>
+  <div class="notes-popover-field">
+    <div class="notes-popover-label">Work notes</div>
+    <div class="notes-popover-value" id="notesPopoverWorkNotes"></div>
+  </div>
+  <div class="notes-popover-field">
+    <div class="notes-popover-label">Additional comments</div>
+    <div class="notes-popover-value" id="notesPopoverComments"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+<script src="config.js"></script>
 <script>
-  const STORAGE_KEY = 'ai-task-portal-tasks';
-  let tasks = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-  let filter = 'all';
+  // TAB_COLORS, DEFAULT_TABLE_NAMES, DEFAULT_COMPLEXITY_LABELS,
+  // DEFAULT_FIELD_SETS, DEFAULT_NUMBER_PREFIXES, DEFAULT_NUMBER_BASES,
+  // *_FIELD_LABELS, and DEFAULT_FIELD_LABELS are all defined in config.js.
 
-  const taskInput = document.getElementById('taskInput');
-  const prioritySelect = document.getElementById('prioritySelect');
-  const dueInput = document.getElementById('dueInput');
-  const addBtn = document.getElementById('addBtn');
-  const taskList = document.getElementById('taskList');
-  const emptyState = document.getElementById('emptyState');
-  const statsEl = document.getElementById('stats');
-  const filterBtns = document.querySelectorAll('.filters button[data-filter]');
-  const clearDoneBtn = document.getElementById('clearDone');
+  // --- Avatar dropdown menu ---
+  const avatarWrap = document.getElementById('avatarWrap');
+  const avatarBtn = document.getElementById('avatarBtn');
+  const dropdownMenu = document.getElementById('dropdownMenu');
+  const configMenuItem = document.getElementById('configMenuItem');
 
-  function save() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+  function closeDropdown() {
+    dropdownMenu.hidden = true;
+    avatarBtn.setAttribute('aria-expanded', 'false');
   }
 
-  function addTask() {
-    const title = taskInput.value.trim();
-    if (!title) return;
-    tasks.push({
-      id: crypto.randomUUID(),
-      title,
-      priority: prioritySelect.value,
-      due: dueInput.value || null,
-      done: false,
-      createdAt: new Date().toISOString()
-    });
-    taskInput.value = '';
-    dueInput.value = '';
-    save();
-    render();
-  }
+  avatarBtn.onclick = (e) => {
+    e.stopPropagation();
+    const isOpen = !dropdownMenu.hidden;
+    dropdownMenu.hidden = isOpen;
+    avatarBtn.setAttribute('aria-expanded', String(!isOpen));
+  };
 
-  function isOverdue(task) {
-    if (!task.due || task.done) return false;
-    const due = new Date(task.due + 'T23:59:59');
-    return due < new Date();
-  }
-
-  function render() {
-    let visible = tasks;
-    if (filter === 'active') visible = tasks.filter(t => !t.done);
-    if (filter === 'done') visible = tasks.filter(t => t.done);
-
-    taskList.innerHTML = '';
-    emptyState.style.display = visible.length === 0 ? 'block' : 'none';
-
-    visible
-      .slice()
-      .sort((a, b) => (a.done - b.done) || new Date(a.createdAt) - new Date(b.createdAt))
-      .forEach(task => {
-        const li = document.createElement('li');
-        li.className = 'task' + (task.done ? ' done' : '');
-
-        const checkbox = document.createElement('div');
-        checkbox.className = 'checkbox' + (task.done ? ' checked' : '');
-        checkbox.textContent = task.done ? '✓' : '';
-        checkbox.onclick = () => {
-          task.done = !task.done;
-          save();
-          render();
-        };
-
-        const body = document.createElement('div');
-        body.className = 'task-body';
-
-        const titleEl = document.createElement('div');
-        titleEl.className = 'task-title';
-        titleEl.textContent = task.title;
-
-        const meta = document.createElement('div');
-        meta.className = 'task-meta';
-
-        const prioBadge = document.createElement('span');
-        prioBadge.className = 'badge ' + task.priority;
-        prioBadge.textContent = task.priority;
-        meta.appendChild(prioBadge);
-
-        if (task.due) {
-          const dueBadge = document.createElement('span');
-          if (isOverdue(task)) {
-            dueBadge.className = 'badge overdue';
-            dueBadge.textContent = 'Overdue: ' + task.due;
-          } else {
-            dueBadge.textContent = 'Due: ' + task.due;
-          }
-          meta.appendChild(dueBadge);
-        }
-
-        body.appendChild(titleEl);
-        body.appendChild(meta);
-
-        const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'icon-btn';
-        deleteBtn.textContent = '✕';
-        deleteBtn.title = 'Delete task';
-        deleteBtn.onclick = () => {
-          tasks = tasks.filter(t => t.id !== task.id);
-          save();
-          render();
-        };
-
-        li.appendChild(checkbox);
-        li.appendChild(body);
-        li.appendChild(deleteBtn);
-        taskList.appendChild(li);
-      });
-
-    const total = tasks.length;
-    const done = tasks.filter(t => t.done).length;
-    statsEl.textContent = total === 0 ? '' : `${done} / ${total} completed`;
-  }
-
-  addBtn.onclick = addTask;
-  taskInput.addEventListener('keydown', e => {
-    if (e.key === 'Enter') addTask();
+  document.addEventListener('click', (e) => {
+    if (!avatarWrap.contains(e.target)) closeDropdown();
   });
 
-  filterBtns.forEach(btn => {
+  // --- Row notes popover (Work notes + Additional comments) ---
+  const notesPopover = document.getElementById('notesPopover');
+  const notesPopoverWorkNotes = document.getElementById('notesPopoverWorkNotes');
+  const notesPopoverComments = document.getElementById('notesPopoverComments');
+
+  let notesPopoverAnchor = null;
+
+  function openNotesPopover(anchorBtn, row) {
+    notesPopoverAnchor = anchorBtn;
+    notesPopoverWorkNotes.textContent = row.values.work_notes || '—';
+    notesPopoverComments.textContent = row.values.comments || '—';
+    notesPopover.hidden = false;
+    const rect = anchorBtn.getBoundingClientRect();
+    const popoverWidth = notesPopover.offsetWidth;
+    notesPopover.style.top = (rect.bottom + 6) + 'px';
+    notesPopover.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - popoverWidth - 8)) + 'px';
+  }
+
+  function closeNotesPopover() {
+    notesPopover.hidden = true;
+    notesPopoverAnchor = null;
+  }
+
+  // Clicking the icon that's already open toggles it closed; clicking a
+  // different row's icon just moves/updates the popover to that row.
+  function toggleNotesPopover(anchorBtn, row) {
+    if (notesPopoverAnchor === anchorBtn && !notesPopover.hidden) {
+      closeNotesPopover();
+    } else {
+      openNotesPopover(anchorBtn, row);
+    }
+  }
+
+  document.addEventListener('click', (e) => {
+    if (!notesPopover.hidden && !notesPopover.contains(e.target) && !e.target.closest('.info-icon-btn')) {
+      closeNotesPopover();
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeNotesPopover();
+  });
+
+  // --- Configuration modal ---
+
+  // Fields absent from the dictionary exports in config.js (the exports weren't
+  // exhaustive) fall back to a formatted version of the backend name.
+  function autoFormatFieldLabel(fieldName) {
+    return fieldName
+      .replace(/^u_/, '')
+      .split('_')
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ');
+  }
+
+  function getFieldLabel(tableIndex, fieldName) {
+    const map = DEFAULT_FIELD_LABELS[tableIndex];
+    if (map && map[fieldName]) return map[fieldName];
+    return autoFormatFieldLabel(fieldName);
+  }
+
+  // Table names now come from Page Settings instead of a hardcoded list.
+  // For the 5 known default tables (by position) we use their real field
+  // list; any table added beyond that falls back to a placeholder count of
+  // generic "Field N" entries, stable for a given position.
+  function computeFieldCount(tableIndex) {
+    return 18 + ((tableIndex * 7) % 13); // varies between 18 and 30
+  }
+
+  function getTableFieldNames(tableIndex) {
+    if (DEFAULT_FIELD_SETS[tableIndex]) return DEFAULT_FIELD_SETS[tableIndex];
+    const count = computeFieldCount(tableIndex);
+    const names = [];
+    for (let f = 1; f <= count; f++) names.push('Field ' + f);
+    return names;
+  }
+
+  // The fields (and order) a table starts with before any user customization.
+  // For the 5 known default tables this is the curated DEFAULT_ACTIVE_FIELDS
+  // list from config.js; any table added beyond that has no curated subset,
+  // so every field starts active.
+  function getDefaultActiveFields(tableIndex) {
+    if (DEFAULT_ACTIVE_FIELDS[tableIndex]) return DEFAULT_ACTIVE_FIELDS[tableIndex].slice();
+    return getTableFieldNames(tableIndex).slice();
+  }
+
+  function getRecordNumber(tableIndex, rowIndex) {
+    const prefix = DEFAULT_NUMBER_PREFIXES[tableIndex];
+    if (!prefix) return String(rowIndex + 1);
+    const base = DEFAULT_NUMBER_BASES[tableIndex];
+    return prefix + String(base + rowIndex).padStart(7, '0');
+  }
+
+  function getTableDefs() {
+    return appliedState.tableNames.map((name, i) => ({ name, fieldNames: getTableFieldNames(i) }));
+  }
+
+  const MIN_ACTIVE_FIELDS = 3;
+  const configModalOverlay = document.getElementById('configModalOverlay');
+  const tablesAccordion = document.getElementById('tablesAccordion');
+  const configError = document.getElementById('configError');
+  const resetBtn = document.getElementById('resetBtn');
+  const cancelBtn = document.getElementById('cancelBtn');
+  const applyBtn = document.getElementById('applyBtn');
+  const modalTabBtns = document.querySelectorAll('.modal-tab-btn');
+  const tableConfigPanel = document.getElementById('tableConfigPanel');
+  const pageSettingsPanel = document.getElementById('pageSettingsPanel');
+  const queriesPanel = document.getElementById('queriesPanel');
+  const queriesAccordion = document.getElementById('queriesAccordion');
+  const tableNamesInput = document.getElementById('tableNamesInput');
+  const complexityLabelsInput = document.getElementById('complexityLabelsInput');
+
+  modalTabBtns.forEach(btn => {
     btn.onclick = () => {
-      filterBtns.forEach(b => b.classList.remove('active'));
+      modalTabBtns.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      filter = btn.dataset.filter;
-      render();
+      const tab = btn.dataset.modalTab;
+      tableConfigPanel.hidden = tab !== 'tableConfig';
+      pageSettingsPanel.hidden = tab !== 'pageSettings';
+      queriesPanel.hidden = tab !== 'queries';
+      hideConfigError();
     };
   });
 
-  clearDoneBtn.onclick = () => {
-    tasks = tasks.filter(t => !t.done);
-    save();
-    render();
+  // appliedState holds the last-confirmed (Applied) values. The Table
+  // Configuration accordion and its checkboxes are re-synced from it every
+  // time the modal opens, so an unconfirmed edit followed by Cancel never
+  // sticks. Table on/off + field toggles are tracked by POSITION in
+  // tableNames — renaming an entry keeps its config, adding one gets
+  // defaults, removing one drops its config.
+  // Table names must be lowercase letters, digits, and underscores only.
+  const TABLE_NAME_PATTERN = /^[a-z0-9_]+$/;
+  // DEFAULT_TABLE_NAMES and DEFAULT_COMPLEXITY_LABELS come from config.js.
+
+  const appliedState = {
+    tableNames: DEFAULT_TABLE_NAMES.slice(),
+    tables: DEFAULT_TABLE_NAMES.map((name, i) => ({
+      on: true,
+      activeFields: getDefaultActiveFields(i),
+      query: DEFAULT_QUERY_VALUE
+    })),
+    complexityLabels: DEFAULT_COMPLEXITY_LABELS.slice()
   };
 
-  render();
+  // Reflects whichever table list the accordion was last built from
+  // (i.e. appliedState.tableNames as of the last openConfigModal() call).
+  let currentTableDefs = [];
+  const tableSwitches = [];
+  const tableAvailableSelects = []; // parallel array: tableAvailableSelects[tableIndex] = <select multiple>
+  const tableSelectedSelects = []; // parallel array: tableSelectedSelects[tableIndex] = <select multiple>
+  const tableQueryTextareas = []; // parallel array: tableQueryTextareas[tableIndex] = <textarea>
+
+  // Moves the currently-selected <option>s from one multi-select to the end
+  // of another, without disturbing the order of what's left behind.
+  function moveOptions(fromSelect, toSelect) {
+    Array.from(fromSelect.selectedOptions).forEach(opt => toSelect.appendChild(opt));
+  }
+
+  // Moves every <option> regardless of highlight state — used by the table
+  // on/off cascade, which acts on the whole field list, not just a selection.
+  function moveAllOptions(fromSelect, toSelect) {
+    Array.from(fromSelect.options).forEach(opt => toSelect.appendChild(opt));
+  }
+
+  // Reorders a multi-select's own options: selected ones shift up/down by one
+  // slot each call, correctly handling multi-selection and contiguous blocks.
+  function reorderSelected(select, direction) {
+    const options = Array.from(select.options);
+    if (direction === 'up') {
+      for (let i = 1; i < options.length; i++) {
+        if (options[i].selected && !options[i - 1].selected) {
+          select.insertBefore(options[i], options[i - 1]);
+        }
+      }
+    } else {
+      for (let i = options.length - 2; i >= 0; i--) {
+        if (options[i].selected && !options[i + 1].selected) {
+          select.insertBefore(options[i + 1], options[i]);
+        }
+      }
+    }
+  }
+
+  function buildTableAccordion(def, tableIndex) {
+    const li = document.createElement('li');
+    li.className = 'accordion-item';
+
+    const header = document.createElement('div');
+    header.className = 'accordion-header';
+
+    const chevron = document.createElement('span');
+    chevron.className = 'accordion-chevron';
+    chevron.textContent = '▸';
+
+    const title = document.createElement('span');
+    title.className = 'accordion-title';
+    title.textContent = def.name;
+
+    const switchLabel = document.createElement('label');
+    switchLabel.className = 'switch';
+    const tableInput = document.createElement('input');
+    tableInput.type = 'checkbox';
+    tableInput.checked = true;
+    const slider = document.createElement('span');
+    slider.className = 'slider';
+    switchLabel.appendChild(tableInput);
+    switchLabel.appendChild(slider);
+    // Table switch must not also trigger the header's expand/collapse click.
+    switchLabel.addEventListener('click', (e) => e.stopPropagation());
+
+    header.appendChild(chevron);
+    header.appendChild(title);
+    header.appendChild(switchLabel);
+
+    const body = document.createElement('div');
+    body.className = 'accordion-body';
+    body.hidden = true;
+
+    // Available/Selected slush bucket: Available holds inactive fields (in
+    // the table's original order), Selected holds active fields in whatever
+    // order the user has arranged them — that order becomes the data
+    // table's column order.
+    const bucket = document.createElement('div');
+    bucket.className = 'slush-bucket';
+
+    const availableCol = document.createElement('div');
+    availableCol.className = 'slush-column';
+    const availableHeading = document.createElement('div');
+    availableHeading.className = 'slush-heading';
+    availableHeading.textContent = 'Available';
+    const availableSelect = document.createElement('select');
+    availableSelect.multiple = true;
+    availableSelect.className = 'slush-select';
+    availableCol.appendChild(availableHeading);
+    availableCol.appendChild(availableSelect);
+
+    const moveButtons = document.createElement('div');
+    moveButtons.className = 'slush-move-buttons';
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = 'secondary slush-btn';
+    addBtn.title = 'Add to Selected';
+    addBtn.textContent = '›';
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'secondary slush-btn';
+    removeBtn.title = 'Remove from Selected';
+    removeBtn.textContent = '‹';
+    moveButtons.appendChild(addBtn);
+    moveButtons.appendChild(removeBtn);
+
+    const selectedCol = document.createElement('div');
+    selectedCol.className = 'slush-column';
+    const selectedHeading = document.createElement('div');
+    selectedHeading.className = 'slush-heading';
+    selectedHeading.textContent = 'Selected';
+    const selectedSelect = document.createElement('select');
+    selectedSelect.multiple = true;
+    selectedSelect.className = 'slush-select';
+    selectedCol.appendChild(selectedHeading);
+    selectedCol.appendChild(selectedSelect);
+
+    const reorderButtons = document.createElement('div');
+    reorderButtons.className = 'slush-reorder-buttons';
+    const upBtn = document.createElement('button');
+    upBtn.type = 'button';
+    upBtn.className = 'secondary slush-btn';
+    upBtn.title = 'Move up';
+    upBtn.textContent = '˄';
+    const downBtn = document.createElement('button');
+    downBtn.type = 'button';
+    downBtn.className = 'secondary slush-btn';
+    downBtn.title = 'Move down';
+    downBtn.textContent = '˅';
+    reorderButtons.appendChild(upBtn);
+    reorderButtons.appendChild(downBtn);
+
+    def.fieldNames.forEach(fieldName => {
+      const opt = document.createElement('option');
+      opt.value = fieldName;
+      opt.textContent = getFieldLabel(tableIndex, fieldName);
+      selectedSelect.appendChild(opt);
+    });
+
+    addBtn.onclick = () => moveOptions(availableSelect, selectedSelect);
+    removeBtn.onclick = () => moveOptions(selectedSelect, availableSelect);
+    upBtn.onclick = () => reorderSelected(selectedSelect, 'up');
+    downBtn.onclick = () => reorderSelected(selectedSelect, 'down');
+
+    bucket.appendChild(availableCol);
+    bucket.appendChild(moveButtons);
+    bucket.appendChild(selectedCol);
+    bucket.appendChild(reorderButtons);
+    body.appendChild(bucket);
+
+    li.appendChild(header);
+    li.appendChild(body);
+    tablesAccordion.appendChild(li);
+
+    // Table switch cascades to its fields: ON moves everything back into
+    // Selected (default), OFF empties Selected (moves everything to
+    // Available). Turning a table off also collapses it, since an inactive
+    // table can't be expanded.
+    tableInput.addEventListener('change', () => {
+      if (tableInput.checked) {
+        moveAllOptions(availableSelect, selectedSelect);
+      } else {
+        moveAllOptions(selectedSelect, availableSelect);
+        body.hidden = true;
+        header.classList.remove('open');
+      }
+    });
+
+    header.onclick = () => {
+      if (!tableInput.checked) return; // inactive tables don't expand
+      const isOpen = !body.hidden;
+      tablesAccordion.querySelectorAll('.accordion-body').forEach(b => { b.hidden = true; });
+      tablesAccordion.querySelectorAll('.accordion-header').forEach(h => h.classList.remove('open'));
+      if (!isOpen) {
+        body.hidden = false;
+        header.classList.add('open');
+      }
+    };
+
+    tableSwitches.push(tableInput);
+    tableAvailableSelects.push(availableSelect);
+    tableSelectedSelects.push(selectedSelect);
+  }
+
+  // Splits table i's field <option>s between Selected (activeFields, in
+  // that order) and Available (everything else, in the table's original
+  // field order) — regardless of which select each option currently sits in.
+  function syncSlushBucket(tableIndex, def, activeFields) {
+    const findOpt = (fieldName) =>
+      Array.from(tableSelectedSelects[tableIndex].options).find(o => o.value === fieldName) ||
+      Array.from(tableAvailableSelects[tableIndex].options).find(o => o.value === fieldName);
+    const activeSet = new Set(activeFields);
+    activeFields.forEach(fieldName => {
+      const opt = findOpt(fieldName);
+      if (opt) tableSelectedSelects[tableIndex].appendChild(opt);
+    });
+    def.fieldNames.forEach(fieldName => {
+      if (activeSet.has(fieldName)) return;
+      const opt = findOpt(fieldName);
+      if (opt) tableAvailableSelects[tableIndex].appendChild(opt);
+    });
+  }
+
+  // Rebuilds the Table Configuration accordion from appliedState.tableNames,
+  // then syncs its slush buckets from appliedState.tables. Called each time
+  // the modal opens so it reflects whatever was last Applied.
+  function rebuildTableAccordion() {
+    tablesAccordion.innerHTML = '';
+    tableSwitches.length = 0;
+    tableAvailableSelects.length = 0;
+    tableSelectedSelects.length = 0;
+    currentTableDefs = getTableDefs();
+    currentTableDefs.forEach(buildTableAccordion);
+    currentTableDefs.forEach((def, i) => {
+      tableSwitches[i].checked = appliedState.tables[i].on;
+      syncSlushBucket(i, def, appliedState.tables[i].activeFields);
+    });
+  }
+
+  // One accordion item per table, matching Table Configuration's style —
+  // expand a table to see (and edit) its Query textarea.
+  function buildQueryAccordionItem(def, tableIndex) {
+    const li = document.createElement('li');
+    li.className = 'accordion-item';
+
+    const header = document.createElement('div');
+    header.className = 'accordion-header';
+
+    const chevron = document.createElement('span');
+    chevron.className = 'accordion-chevron';
+    chevron.textContent = '▸';
+
+    const title = document.createElement('span');
+    title.className = 'accordion-title';
+    title.textContent = def.name;
+
+    header.appendChild(chevron);
+    header.appendChild(title);
+
+    const body = document.createElement('div');
+    body.className = 'accordion-body';
+    body.hidden = true;
+
+    const textarea = document.createElement('textarea');
+    textarea.className = 'query-textarea';
+    textarea.rows = 3;
+    textarea.value = appliedState.tables[tableIndex].query;
+    body.appendChild(textarea);
+
+    header.onclick = () => {
+      const isOpen = !body.hidden;
+      queriesAccordion.querySelectorAll('.accordion-body').forEach(b => { b.hidden = true; });
+      queriesAccordion.querySelectorAll('.accordion-header').forEach(h => h.classList.remove('open'));
+      if (!isOpen) {
+        body.hidden = false;
+        header.classList.add('open');
+      }
+    };
+
+    li.appendChild(header);
+    li.appendChild(body);
+    queriesAccordion.appendChild(li);
+    tableQueryTextareas.push(textarea);
+  }
+
+  // Rebuilds the Queries tab from the same currentTableDefs the accordion
+  // just built, one accordion item per table, synced from appliedState.
+  function rebuildQueriesPanel() {
+    queriesAccordion.innerHTML = '';
+    tableQueryTextareas.length = 0;
+    currentTableDefs.forEach(buildQueryAccordionItem);
+  }
+
+  function hideConfigError() {
+    configError.hidden = true;
+    configError.textContent = '';
+  }
+
+  // Checks the modal's current (unsaved) Selected-list state against the
+  // "an active table needs at least 3 active fields" rule.
+  function getValidationErrors() {
+    const errors = [];
+    currentTableDefs.forEach((def, i) => {
+      if (!tableSwitches[i].checked) return;
+      const activeCount = tableSelectedSelects[i].options.length;
+      if (activeCount < MIN_ACTIVE_FIELDS) {
+        errors.push(`"${def.name}" is active but has only ${activeCount} active field${activeCount === 1 ? '' : 's'}. At least ${MIN_ACTIVE_FIELDS} active fields are required.`);
+      }
+    });
+    return errors;
+  }
+
+  // Every table's Query textarea must have a non-blank value, whether or
+  // not that table is currently switched on.
+  function getQueryErrors() {
+    const errors = [];
+    currentTableDefs.forEach((def, i) => {
+      if (!tableQueryTextareas[i].value.trim()) {
+        errors.push(`"${def.name}": Query cannot be empty.`);
+      }
+    });
+    return errors;
+  }
+
+  // Shared non-empty / non-blank / unique check for a comma-separated
+  // textarea, used for both table names and complexity labels. An optional
+  // pattern additionally rejects entries with disallowed characters (used
+  // for table names, which must be lowercase/digits/underscore only).
+  function getCommaListErrors(input, label, pattern) {
+    const errors = [];
+    const raw = input.value;
+    if (!raw.trim()) {
+      errors.push(`Page Settings: enter at least one ${label}.`);
+      return errors;
+    }
+    const parts = raw.split(',').map(s => s.trim());
+    if (parts.some(p => p === '')) {
+      errors.push(`Page Settings: ${label}s cannot be blank — check for extra or trailing commas.`);
+    }
+    if (pattern) {
+      parts.forEach(p => {
+        if (p && !pattern.test(p)) {
+          errors.push(`Page Settings: "${p}" is not a valid ${label} — use lowercase letters, numbers, and underscores only (no spaces or other special characters).`);
+        }
+      });
+    }
+    const seen = new Set();
+    parts.forEach(p => {
+      if (!p) return;
+      const key = p.toLowerCase();
+      if (seen.has(key)) {
+        errors.push(`Page Settings: duplicate ${label} "${p}" — ${label}s must be unique.`);
+      }
+      seen.add(key);
+    });
+    return errors;
+  }
+
+  function parseCommaList(input) {
+    return input.value.split(',').map(s => s.trim()).filter(Boolean);
+  }
+
+  function openConfigModal() {
+    rebuildTableAccordion();
+    rebuildQueriesPanel();
+    document.querySelectorAll('.accordion-body').forEach(b => { b.hidden = true; });
+    document.querySelectorAll('.accordion-header').forEach(h => h.classList.remove('open'));
+    tableNamesInput.value = appliedState.tableNames.join(', ');
+    complexityLabelsInput.value = appliedState.complexityLabels.join(', ');
+    modalTabBtns.forEach(b => b.classList.remove('active'));
+    modalTabBtns[0].classList.add('active');
+    pageSettingsPanel.hidden = false;
+    tableConfigPanel.hidden = true;
+    queriesPanel.hidden = true;
+    hideConfigError();
+    configModalOverlay.hidden = false;
+  }
+
+  // Discards any unconfirmed edits by simply closing without touching
+  // appliedState — the next openConfigModal() re-syncs from it anyway.
+  function cancelConfigModal() {
+    configModalOverlay.hidden = true;
+  }
+
+  function applyConfigModal() {
+    const errors = getCommaListErrors(tableNamesInput, 'table name', TABLE_NAME_PATTERN)
+      .concat(getCommaListErrors(complexityLabelsInput, 'label'))
+      .concat(getValidationErrors())
+      .concat(getQueryErrors());
+    if (errors.length > 0) {
+      configError.textContent = 'Cannot apply changes:\n' + errors.map(e => '• ' + e).join('\n');
+      configError.hidden = false;
+      return;
+    }
+    hideConfigError();
+
+    // Slush-bucket and Query edits reflect currentTableDefs (the list the
+    // accordion/Queries tab were built from). Reconcile them against the
+    // just-typed table name list by position: carry over where a position
+    // still exists, default for new positions, drop positions beyond the
+    // new length.
+    const editedTablesConfig = currentTableDefs.map((def, i) => ({
+      on: tableSwitches[i].checked,
+      activeFields: Array.from(tableSelectedSelects[i].options).map(o => o.value),
+      query: tableQueryTextareas[i].value
+    }));
+    const newTableNames = parseCommaList(tableNamesInput);
+    appliedState.tables = newTableNames.map((name, i) => editedTablesConfig[i] || {
+      on: true,
+      activeFields: getDefaultActiveFields(i),
+      query: DEFAULT_QUERY_VALUE
+    });
+    appliedState.tableNames = newTableNames;
+    appliedState.complexityLabels = parseCommaList(complexityLabelsInput);
+
+    configModalOverlay.hidden = true;
+    renderMainPage();
+  }
+
+  configMenuItem.onclick = () => {
+    closeDropdown();
+    openConfigModal();
+  };
+
+  // Reset to Default only affects Table Configuration's on/off + field
+  // selection and the Queries tab, for the currently-shown tables — Page
+  // Settings textareas (table names, complexity labels) are left as the
+  // user typed them.
+  resetBtn.onclick = () => {
+    currentTableDefs.forEach((def, i) => {
+      tableSwitches[i].checked = true;
+      syncSlushBucket(i, def, getDefaultActiveFields(i));
+      tableQueryTextareas[i].value = DEFAULT_QUERY_VALUE;
+    });
+    hideConfigError();
+  };
+
+  cancelBtn.onclick = cancelConfigModal;
+  applyBtn.onclick = applyConfigModal;
+
+  configModalOverlay.addEventListener('click', (e) => {
+    if (e.target === configModalOverlay) cancelConfigModal();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      if (!configModalOverlay.hidden) cancelConfigModal();
+      else if (!saveOptionsOverlay.hidden) closeSaveOptions();
+      else if (!dropdownMenu.hidden) closeDropdown();
+    }
+  });
+
+  // --- Main page: tabs (active tables) + search/filter + mock data ---
+  const ROWS_PER_TABLE = 70;
+  const tableTabs = document.getElementById('tableTabs');
+  const tableControls = document.getElementById('tableControls');
+  const tableNameHeading = document.getElementById('tableNameHeading');
+  const searchInput = document.getElementById('searchInput');
+  const fieldFilterWrap = document.getElementById('fieldFilterWrap');
+  const fieldFilterInput = document.getElementById('fieldFilterInput');
+  const fieldFilterMenu = document.getElementById('fieldFilterMenu');
+  const contentArea = document.getElementById('contentArea');
+
+  let selectedTableIndex = null;
+  let selectedCategory = 'ALL';
+  let selectedField = 'ALL';
+
+  // A table has no entry here until data is actually loaded into it (via
+  // Load Live Data or Load Previous) — renderContent() shows a "Data is not
+  // loaded" message for any table missing an entry, instead of ever
+  // inventing rows on its own.
+  const tableRowsStore = {};
+
+  // Not called anywhere now that Load Live Data pulls real rows from
+  // ServiceNow — kept around only as a quick way to preview the table
+  // layout with placeholder text, if that's ever useful again.
+  function generateMockRows(tableIndex) {
+    const def = getTableDefs()[tableIndex];
+    const labels = appliedState.complexityLabels;
+    const rows = [];
+    for (let r = 0; r < ROWS_PER_TABLE; r++) {
+      const values = {};
+      def.fieldNames.forEach((fieldName, idx) => {
+        values[fieldName] = fieldName + ' - Row ' + (r + 1);
+      });
+      rows.push({
+        id: tableIndex + '-' + r,
+        // Record Number is mapped to the table's real "number" field instead
+        // of a plain row count — e.g. INC0126742 for the incident table.
+        recordNumber: getRecordNumber(tableIndex, r),
+        complexity: labels[r % labels.length],
+        about: 'Sample about text for row ' + (r + 1) + '.',
+        implementationGuidance: 'Sample implementation guidance for row ' + (r + 1) + '.',
+        values
+      });
+    }
+    tableRowsStore[tableIndex] = rows;
+    return rows;
+  }
+
+  function getActiveTableIndexes() {
+    return appliedState.tableNames.map((name, i) => i).filter(i => appliedState.tables[i].on);
+  }
+
+  function getActiveFieldNames(tableIndex) {
+    // Already in the user-arranged order — this is what drives column order
+    // in the data table.
+    return appliedState.tables[tableIndex].activeFields;
+  }
+
+  // Searchable field-filter combobox: fieldFilterInput both displays the
+  // current selection and doubles as a search box for fieldFilterMenu's
+  // option list, since a table can have up to 30 fields to scroll through.
+  function getFieldFilterOptions() {
+    const opts = [{ value: 'ALL', label: 'All Fields' }];
+    if (selectedTableIndex !== null) {
+      getActiveFieldNames(selectedTableIndex).forEach(name => opts.push({ value: name, label: getFieldLabel(selectedTableIndex, name) }));
+    }
+    return opts;
+  }
+
+  function currentFieldLabel() {
+    const match = getFieldFilterOptions().find(o => o.value === selectedField);
+    return match ? match.label : 'All Fields';
+  }
+
+  function renderFieldFilterMenu(query) {
+    const q = query.trim().toLowerCase();
+    const opts = getFieldFilterOptions().filter(o => o.label.toLowerCase().includes(q));
+    fieldFilterMenu.innerHTML = '';
+    if (opts.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'field-filter-empty';
+      empty.textContent = 'No matching fields.';
+      fieldFilterMenu.appendChild(empty);
+      return;
+    }
+    opts.forEach(o => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'field-filter-option' + (o.value === selectedField ? ' highlighted' : '');
+      btn.textContent = o.label;
+      btn.onclick = () => {
+        selectedField = o.value;
+        fieldFilterInput.value = o.label;
+        fieldFilterMenu.hidden = true;
+        renderContent();
+      };
+      fieldFilterMenu.appendChild(btn);
+    });
+  }
+
+  function closeFieldFilterMenu() {
+    fieldFilterMenu.hidden = true;
+    fieldFilterInput.value = currentFieldLabel();
+  }
+
+  fieldFilterInput.addEventListener('focus', () => {
+    fieldFilterInput.select();
+    renderFieldFilterMenu('');
+    fieldFilterMenu.hidden = false;
+  });
+
+  fieldFilterInput.addEventListener('input', () => {
+    renderFieldFilterMenu(fieldFilterInput.value);
+    fieldFilterMenu.hidden = false;
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!fieldFilterWrap.contains(e.target) && !fieldFilterMenu.hidden) closeFieldFilterMenu();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !fieldFilterMenu.hidden) closeFieldFilterMenu();
+  });
+
+  function renderFilterOptions() {
+    selectedField = 'ALL';
+    fieldFilterInput.value = 'All Fields';
+    fieldFilterMenu.hidden = true;
+  }
+
+  function renderCategoryTabs(rows) {
+    const wrap = document.createElement('div');
+    wrap.className = 'category-tabs';
+    const categories = ['All'].concat(appliedState.complexityLabels);
+
+    categories.forEach((label, i) => {
+      const value = label === 'All' ? 'ALL' : label;
+      const btn = document.createElement('button');
+      btn.className = 'category-tab-btn' + (selectedCategory === value ? ' active' : '');
+      btn.style.background = TAB_COLORS[i % TAB_COLORS.length];
+      btn.textContent = label;
+      btn.onclick = () => {
+        selectedCategory = value;
+        renderContent();
+      };
+      wrap.appendChild(btn);
+    });
+    return wrap;
+  }
+
+  function renderContent() {
+    contentArea.innerHTML = '';
+
+    if (selectedTableIndex === null) {
+      const empty = document.createElement('div');
+      empty.className = 'empty';
+      empty.textContent = 'No active tables. Enable a table in Configuration to see it here.';
+      contentArea.appendChild(empty);
+      return;
+    }
+
+    if (!tableRowsStore[selectedTableIndex]) {
+      const empty = document.createElement('div');
+      empty.className = 'empty';
+      empty.textContent = 'Data is not loaded. Load data to start triaging.';
+      contentArea.appendChild(empty);
+      return;
+    }
+
+    const fieldNames = getActiveFieldNames(selectedTableIndex);
+    const allRows = tableRowsStore[selectedTableIndex];
+    const searchTerm = searchInput.value.trim().toLowerCase();
+
+    const rows = allRows.filter(row => {
+      if (selectedCategory !== 'ALL' && row.complexity !== selectedCategory) return false;
+      if (!searchTerm) return true;
+      if (selectedField === 'ALL') {
+        return fieldNames.some(name => row.values[name].toLowerCase().includes(searchTerm));
+      }
+      return fieldNames.includes(selectedField) && row.values[selectedField].toLowerCase().includes(searchTerm);
+    });
+
+    const contentRow = document.createElement('div');
+    contentRow.className = 'table-content-row';
+
+    if (rows.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'empty';
+      empty.style.flex = '1';
+      empty.textContent = 'No matching records.';
+      contentRow.appendChild(empty);
+    } else {
+      const wrap = document.createElement('div');
+      wrap.className = 'data-table-wrap';
+      const table = document.createElement('table');
+      table.className = 'data-table';
+
+      const thead = document.createElement('thead');
+      const headRow = document.createElement('tr');
+      ['', 'Record Number', 'Task complexity', 'About', 'Implementation Guidance'].forEach(label => {
+        const th = document.createElement('th');
+        th.textContent = label;
+        headRow.appendChild(th);
+      });
+      fieldNames.forEach(name => {
+        const th = document.createElement('th');
+        th.textContent = getFieldLabel(selectedTableIndex, name);
+        headRow.appendChild(th);
+      });
+      thead.appendChild(headRow);
+      table.appendChild(thead);
+
+      const tbody = document.createElement('tbody');
+      rows.forEach(row => {
+        // Page Settings labels can change after rows already exist; if a
+        // row's stored complexity no longer matches any current label,
+        // fall back to the first one so the dropdown never shows a mismatch.
+        if (!appliedState.complexityLabels.includes(row.complexity)) {
+          row.complexity = appliedState.complexityLabels[0];
+        }
+        const tr = document.createElement('tr');
+
+        const infoTd = document.createElement('td');
+        const infoBtn = document.createElement('button');
+        infoBtn.type = 'button';
+        infoBtn.className = 'info-icon-btn';
+        infoBtn.textContent = 'i';
+        infoBtn.setAttribute('aria-label', 'View work notes and additional comments');
+        infoBtn.onclick = (e) => {
+          e.stopPropagation();
+          toggleNotesPopover(infoBtn, row);
+        };
+        infoTd.appendChild(infoBtn);
+        tr.appendChild(infoTd);
+
+        const recordTd = document.createElement('td');
+        recordTd.textContent = row.recordNumber;
+        tr.appendChild(recordTd);
+
+        const complexityTd = document.createElement('td');
+        const select = document.createElement('select');
+        appliedState.complexityLabels.forEach(label => {
+          const opt = document.createElement('option');
+          opt.value = label;
+          opt.textContent = label;
+          if (label === row.complexity) opt.selected = true;
+          select.appendChild(opt);
+        });
+        select.onchange = () => {
+          row.complexity = select.value;
+          renderContent();
+        };
+        complexityTd.appendChild(select);
+        tr.appendChild(complexityTd);
+
+        const aboutTd = document.createElement('td');
+        const aboutTa = document.createElement('textarea');
+        aboutTa.maxLength = 1000;
+        aboutTa.rows = 2;
+        aboutTa.value = row.about;
+        // Just update the stored value — no re-render, or the textarea would
+        // lose focus/cursor position on every keystroke.
+        aboutTa.oninput = () => { row.about = aboutTa.value; };
+        aboutTd.appendChild(aboutTa);
+        tr.appendChild(aboutTd);
+
+        const guidanceTd = document.createElement('td');
+        const guidanceTa = document.createElement('textarea');
+        guidanceTa.maxLength = 1000;
+        guidanceTa.rows = 2;
+        guidanceTa.value = row.implementationGuidance;
+        guidanceTa.oninput = () => { row.implementationGuidance = guidanceTa.value; };
+        guidanceTd.appendChild(guidanceTa);
+        tr.appendChild(guidanceTd);
+
+        fieldNames.forEach(name => {
+          const td = document.createElement('td');
+          td.textContent = row.values[name];
+          tr.appendChild(td);
+        });
+
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+
+      wrap.appendChild(table);
+      contentRow.appendChild(wrap);
+    }
+
+    contentRow.appendChild(renderCategoryTabs(allRows));
+    contentArea.appendChild(contentRow);
+  }
+
+  function renderTabs() {
+    const activeIndexes = getActiveTableIndexes();
+    tableTabs.innerHTML = '';
+
+    if (activeIndexes.length === 0) {
+      selectedTableIndex = null;
+      tableControls.style.display = 'none';
+      renderContent();
+      return;
+    }
+
+    if (selectedTableIndex === null || !activeIndexes.includes(selectedTableIndex)) {
+      selectedTableIndex = activeIndexes[0];
+    }
+
+    const tableDefs = getTableDefs();
+    tableControls.style.display = '';
+    tableNameHeading.textContent = tableDefs[selectedTableIndex].name;
+
+    activeIndexes.forEach(i => {
+      const btn = document.createElement('button');
+      btn.className = 'table-tab-btn' + (i === selectedTableIndex ? ' active' : '');
+      btn.style.background = TAB_COLORS[i % TAB_COLORS.length];
+      btn.textContent = tableDefs[i].name;
+      btn.onclick = () => {
+        selectedTableIndex = i;
+        selectedCategory = 'ALL';
+        searchInput.value = '';
+        renderTabs();
+      };
+      tableTabs.appendChild(btn);
+    });
+
+    renderFilterOptions();
+    renderContent();
+  }
+
+  function renderMainPage() {
+    renderTabs();
+  }
+
+  searchInput.addEventListener('input', renderContent);
+  // Triage remains a placeholder for now — behavior to be defined once a
+  // real data source exists.
+
+  // --- Load Live Data: pull fresh rows from a ServiceNow Scripted REST API
+  // in a single request covering every active (ON) table, using each
+  // table's own Query (set on the Queries tab) and Selected fields. Each
+  // table's existing loaded data is cleared right before the request goes
+  // out, so a failed refresh leaves that table blank ("Data is not loaded")
+  // instead of showing stale rows.
+  //
+  // Request: sysparm_tables / sysparm_querys / sysparm_fields are each
+  // repeated once per table (via URLSearchParams.append, not one
+  // comma-joined value) — the API reads them as three parallel arrays, so
+  // tableNames[i]/queries[i]/fieldNames[i] all describe the same table.
+  // Response: { "result": { "<table name>": [ {field: value, ...}, ... ] } }
+  // — an object keyed by table name, not one flat array, so records from
+  // different tables never get mixed up.
+  const loadLiveDataBtn = document.getElementById('loadLiveDataBtn');
+
+  function buildLiveDataParams(activeIndexes) {
+    const params = new URLSearchParams();
+    activeIndexes.forEach(tableIndex => {
+      const def = getTableDefs()[tableIndex];
+      const fieldNames = getActiveFieldNames(tableIndex)
+        .concat(['number', 'work_notes', 'comments'])
+        .filter((name, i, arr) => arr.indexOf(name) === i);
+      params.append('sysparm_tables', def.name);
+      params.append('sysparm_querys', appliedState.tables[tableIndex].query);
+      params.append('sysparm_fields', fieldNames.join(','));
+    });
+    return params;
+  }
+
+  // Converts one table's raw records into this app's row shape. Task
+  // complexity/About/Implementation Guidance have no ServiceNow
+  // equivalent, so live rows start with those blank.
+  function recordsToRows(tableIndex, records) {
+    const def = getTableDefs()[tableIndex];
+    return records.map((record, i) => {
+      const values = {};
+      def.fieldNames.forEach(name => { values[name] = record[name] == null ? '' : String(record[name]); });
+      return {
+        id: tableIndex + '-' + i,
+        recordNumber: record.number == null ? '' : String(record.number),
+        complexity: '',
+        about: '',
+        implementationGuidance: '',
+        values
+      };
+    });
+  }
+
+  loadLiveDataBtn.onclick = async () => {
+    if (!SERVICENOW_API_URL) {
+      alert('Set SERVICENOW_API_URL in config.js to your Scripted REST API endpoint first.');
+      return;
+    }
+
+    const activeIndexes = getActiveTableIndexes();
+    if (activeIndexes.length === 0) {
+      alert('No active tables to load. Enable a table in Configuration first.');
+      return;
+    }
+
+    activeIndexes.forEach(tableIndex => { delete tableRowsStore[tableIndex]; });
+    renderMainPage();
+
+    loadLiveDataBtn.disabled = true;
+    loadLiveDataBtn.textContent = 'Loading...';
+
+    const loaded = [];
+    const skipped = [];
+
+    try {
+      const params = buildLiveDataParams(activeIndexes);
+      const response = await fetch(SERVICENOW_API_URL + '?' + params.toString());
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      const data = await response.json();
+      if (!data.result || typeof data.result !== 'object') throw new Error('Response had no "result" object.');
+
+      activeIndexes.forEach(tableIndex => {
+        const def = getTableDefs()[tableIndex];
+        const records = data.result[def.name];
+        if (!Array.isArray(records)) {
+          skipped.push(def.name + ': missing from the response.');
+          return;
+        }
+        const rows = recordsToRows(tableIndex, records);
+        tableRowsStore[tableIndex] = rows;
+        loaded.push(def.name + ' (' + rows.length + ' row' + (rows.length === 1 ? '' : 's') + ')');
+      });
+    } catch (err) {
+      skipped.push('Request failed: ' + err.message);
+    }
+
+    loadLiveDataBtn.disabled = false;
+    loadLiveDataBtn.textContent = 'Load Live Data';
+    renderMainPage();
+
+    const parts = [];
+    if (loaded.length > 0) parts.push('Loaded:\n' + loaded.map(s => '• ' + s).join('\n'));
+    if (skipped.length > 0) parts.push('Skipped:\n' + skipped.map(s => '• ' + s).join('\n'));
+    alert(parts.length > 0 ? parts.join('\n\n') : 'No data returned.');
+  };
+
+  // --- Load Previous: read a previously exported .xlsx back in. Only
+  // active (ON) tables are considered; a sheet is matched to a table by
+  // exact name. A sheet's header row (row 1) must contain every column the
+  // table currently needs — Record Number, Task complexity, About,
+  // Implementation Guidance, plus that table's Selected fields — in any
+  // order; extra columns (like Work notes/Additional comments) are read
+  // opportunistically if present, but aren't required. Tables whose sheet is
+  // missing or missing a required column are skipped and reported, rather
+  // than blocking the tables that did validate.
+  const loadPreviousDataBtn = document.getElementById('loadPreviousDataBtn');
+  const loadPreviousInput = document.getElementById('loadPreviousInput');
+
+  loadPreviousDataBtn.onclick = () => {
+    loadPreviousInput.value = '';
+    loadPreviousInput.click();
+  };
+
+  loadPreviousInput.onchange = async () => {
+    const file = loadPreviousInput.files[0];
+    if (!file) return;
+
+    if (!file.name.toLowerCase().endsWith('.xlsx')) {
+      alert('Please choose an .xlsx file.');
+      return;
+    }
+
+    let workbook;
+    try {
+      const buffer = await file.arrayBuffer();
+      workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(buffer);
+    } catch (err) {
+      alert('Could not read "' + file.name + '" as an Excel file (' + err.message + ').');
+      return;
+    }
+
+    const cellText = (sheetRow, colNumber) => {
+      if (!colNumber) return '';
+      const v = sheetRow.getCell(colNumber).value;
+      return v == null ? '' : String(v);
+    };
+
+    const loaded = [];
+    const skipped = [];
+
+    getActiveTableIndexes().forEach(tableIndex => {
+      const def = getTableDefs()[tableIndex];
+      const sheetName = def.name.slice(0, 31);
+      const worksheet = workbook.worksheets.find(ws => ws.name === sheetName);
+      if (!worksheet) {
+        skipped.push(def.name + ': no sheet named "' + sheetName + '" in the file.');
+        return;
+      }
+
+      const colByLabel = {};
+      worksheet.getRow(1).eachCell((cell, colNumber) => {
+        const text = (cell.value == null ? '' : String(cell.value)).trim();
+        if (text) colByLabel[text] = colNumber;
+      });
+
+      const fieldNames = getActiveFieldNames(tableIndex);
+      const requiredLabels = ['Record Number', 'Task complexity', 'About', 'Implementation Guidance']
+        .concat(fieldNames.map(name => getFieldLabel(tableIndex, name)));
+      const missing = requiredLabels.filter(label => !(label in colByLabel));
+      if (missing.length > 0) {
+        skipped.push(def.name + ': missing column(s) "' + missing.join('", "') + '".');
+        return;
+      }
+
+      // Read every field this table has, plus the always-on extras, from
+      // whichever column their label happens to occupy — columns the file
+      // doesn't have just come back as ''.
+      const colByFieldName = {};
+      def.fieldNames.concat(['work_notes', 'comments']).forEach(name => {
+        const label = getFieldLabel(tableIndex, name);
+        if (label in colByLabel) colByFieldName[name] = colByLabel[label];
+      });
+
+      const rows = [];
+      for (let r = 2; r <= worksheet.rowCount; r++) {
+        const sheetRow = worksheet.getRow(r);
+        const recordNumber = cellText(sheetRow, colByLabel['Record Number']);
+        if (!recordNumber) continue;
+
+        const values = {};
+        def.fieldNames.forEach(name => { values[name] = cellText(sheetRow, colByFieldName[name]); });
+
+        rows.push({
+          id: tableIndex + '-' + (r - 2),
+          recordNumber,
+          complexity: cellText(sheetRow, colByLabel['Task complexity']),
+          about: cellText(sheetRow, colByLabel['About']),
+          implementationGuidance: cellText(sheetRow, colByLabel['Implementation Guidance']),
+          values
+        });
+      }
+
+      tableRowsStore[tableIndex] = rows;
+      loaded.push(def.name + ' (' + rows.length + ' row' + (rows.length === 1 ? '' : 's') + ')');
+    });
+
+    if (loaded.length > 0) renderMainPage();
+
+    const parts = [];
+    if (loaded.length > 0) parts.push('Loaded:\n' + loaded.map(s => '• ' + s).join('\n'));
+    if (skipped.length > 0) parts.push('Skipped:\n' + skipped.map(s => '• ' + s).join('\n'));
+    alert(parts.length > 0 ? parts.join('\n\n') : 'No matching tables found in that file.');
+  };
+
+  // --- Save: export every active (ON) table to its own Excel sheet, using
+  // only each table's currently Selected fields. Every row is included
+  // regardless of the on-screen search/category filter — "All" isn't a real
+  // category, so it has no color of its own; each row is instead colored by
+  // its actual Task complexity, using that category's tab color.
+  const saveBtn = document.getElementById('saveBtn');
+  const saveOptionsOverlay = document.getElementById('saveOptionsOverlay');
+  const saveCancelBtn = document.getElementById('saveCancelBtn');
+  const saveOverwriteBtn = document.getElementById('saveOverwriteBtn');
+  const saveAsCopyBtn = document.getElementById('saveAsCopyBtn');
+
+  // "Overwrite" always uses the same filename — whether that actually
+  // replaces the old download or gets auto-renamed depends on the browser's
+  // own download settings, since a webpage can't control that directly.
+  // "Save as new copy" guarantees a unique filename via a timestamp.
+  function getExportFilename(asCopy) {
+    if (!asCopy) return 'ai-task-portal-export.xlsx';
+    const pad = (n) => String(n).padStart(2, '0');
+    const d = new Date();
+    const stamp = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
+      '_' + pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds());
+    return 'ai-task-portal-export-' + stamp + '.xlsx';
+  }
+
+  function getComplexityColor(complexity) {
+    const index = appliedState.complexityLabels.indexOf(complexity);
+    if (index === -1) return null;
+    // renderCategoryTabs colors ['All', ...complexityLabels] by position, so
+    // a real category's tab color sits one slot after 'All'.
+    return TAB_COLORS[(index + 1) % TAB_COLORS.length];
+  }
+
+  saveBtn.onclick = () => {
+    saveOptionsOverlay.hidden = false;
+  };
+
+  function closeSaveOptions() {
+    saveOptionsOverlay.hidden = true;
+  }
+
+  saveCancelBtn.onclick = closeSaveOptions;
+  saveOptionsOverlay.addEventListener('click', (e) => {
+    if (e.target === saveOptionsOverlay) closeSaveOptions();
+  });
+
+  saveOverwriteBtn.onclick = () => { closeSaveOptions(); runExport(false); };
+  saveAsCopyBtn.onclick = () => { closeSaveOptions(); runExport(true); };
+
+  async function runExport(asCopy) {
+    const activeIndexes = getActiveTableIndexes().filter(i => tableRowsStore[i]);
+    if (activeIndexes.length === 0) {
+      alert('No data loaded to export. Load data into a table first.');
+      return;
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    const usedSheetNames = new Set();
+
+    activeIndexes.forEach(tableIndex => {
+      const def = getTableDefs()[tableIndex];
+      const fieldNames = getActiveFieldNames(tableIndex);
+      const rows = tableRowsStore[tableIndex];
+      // Work notes and Additional comments always export, same as the "i"
+      // popover, even if they aren't in the table's Selected columns — but
+      // skip re-adding either one if it's already there, to avoid a duplicate.
+      const extraFields = ['work_notes', 'comments'].filter(name => !fieldNames.includes(name));
+
+      let sheetName = def.name.slice(0, 31);
+      let suffix = 1;
+      while (usedSheetNames.has(sheetName)) {
+        sheetName = (def.name.slice(0, 28) + '_' + (suffix++)).slice(0, 31);
+      }
+      usedSheetNames.add(sheetName);
+
+      const sheet = workbook.addWorksheet(sheetName);
+      const headers = ['Record Number', 'Task complexity', 'About', 'Implementation Guidance']
+        .concat(fieldNames.map(name => getFieldLabel(tableIndex, name)))
+        .concat(extraFields.map(name => getFieldLabel(tableIndex, name)));
+      sheet.addRow(headers);
+      sheet.getRow(1).font = { bold: true };
+      // Tracks the longest value seen per column so widths can be set to
+      // fit content after all rows are written, instead of a flat guess —
+      // a too-narrow column clips its text against the next column instead
+      // of wrapping.
+      const colWidths = headers.map(h => String(h).length);
+
+      // Grouped by Task complexity — rows of the same complexity sit
+      // together as one colored block, in the order labels are defined in
+      // Page Settings (unrecognized complexity values sort to the end).
+      const groupedRows = rows.slice().sort((a, b) => {
+        const rank = (complexity) => {
+          const i = appliedState.complexityLabels.indexOf(complexity);
+          return i === -1 ? appliedState.complexityLabels.length : i;
+        };
+        return rank(a.complexity) - rank(b.complexity);
+      });
+
+      groupedRows.forEach(row => {
+        const values = [row.recordNumber, row.complexity, row.about, row.implementationGuidance]
+          .concat(fieldNames.map(name => row.values[name]))
+          .concat(extraFields.map(name => row.values[name]));
+        values.forEach((v, i) => {
+          const len = (v == null ? '' : String(v)).length;
+          if (len > colWidths[i]) colWidths[i] = len;
+        });
+        const sheetRow = sheet.addRow(values);
+
+        const color = getComplexityColor(row.complexity);
+        if (color) {
+          const argb = 'FF' + color.replace('#', '').toUpperCase();
+          sheetRow.eachCell({ includeEmpty: true }, cell => {
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb } };
+          });
+        }
+      });
+
+      colWidths.forEach((len, i) => {
+        sheet.getColumn(i + 1).width = Math.min(Math.max(len + 2, 12), 60);
+      });
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = getExportFilename(asCopy);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  renderMainPage();
 </script>
 </body>
 </html>
