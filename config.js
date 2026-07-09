@@ -11,8 +11,20 @@ const TAB_COLORS = ['#f5c359', '#5fd68a', '#6d8bff', '#ff6d6d', '#c77dff', '#4fd
 // (enforced by TABLE_NAME_PATTERN in index.html).
 const DEFAULT_TABLE_NAMES = ['problem', 'rm_story', 'incident', 'change_request', 'sc_task'];
 const DEFAULT_COMPLEXITY_LABELS = ['Easy', 'Intermediate', 'Complex', 'Blocked', 'CoreX'];
-// Starting value for every table's Query textarea on the Queries tab.
+// Starting value for a table's Query textarea when it has no entry in
+// DEFAULT_QUERY_VALUES below (e.g. a table added beyond the default 5).
 const DEFAULT_QUERY_VALUE = 'active=true';
+// Starting value for each default table's Query textarea on the Queries
+// tab, position-matched to DEFAULT_TABLE_NAMES above. Scoped to the
+// Huntoil Support assignment group (assignment_groupDYNAMIC...) and, for
+// incident, excluding state 6 (Resolved).
+const DEFAULT_QUERY_VALUES = [
+  'active=true^assignment_groupDYNAMICd6435e965f510100a9ad2572f2b47744',
+  'active=true^assignment_groupDYNAMICd6435e965f510100a9ad2572f2b47744',
+  'active=true^assignment_groupDYNAMICd6435e965f510100a9ad2572f2b47744^state!=6',
+  'active=true^assignment_groupDYNAMICd6435e965f510100a9ad2572f2b47744',
+  'active=true^assignment_groupDYNAMICd6435e965f510100a9ad2572f2b47744'
+];
 
 // Starting value for the "ServiceNow API URL / REST endpoint" field on the
 // Configuration modal's Page Settings tab — edit it there to override

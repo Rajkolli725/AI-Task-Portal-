@@ -874,6 +874,10 @@
     return getTableFieldNames(tableIndex).slice();
   }
 
+  function getDefaultQueryValue(tableIndex) {
+    return DEFAULT_QUERY_VALUES[tableIndex] || DEFAULT_QUERY_VALUE;
+  }
+
   function getRecordNumber(tableIndex, rowIndex) {
     const prefix = DEFAULT_NUMBER_PREFIXES[tableIndex];
     if (!prefix) return String(rowIndex + 1);
@@ -928,7 +932,7 @@
     tables: DEFAULT_TABLE_NAMES.map((name, i) => ({
       on: true,
       activeFields: getDefaultActiveFields(i),
-      query: DEFAULT_QUERY_VALUE
+      query: getDefaultQueryValue(i)
     })),
     complexityLabels: DEFAULT_COMPLEXITY_LABELS.slice(),
     serviceNowApiUrl: SERVICENOW_API_URL
@@ -1326,7 +1330,7 @@
     appliedState.tables = newTableNames.map((name, i) => editedTablesConfig[i] || {
       on: true,
       activeFields: getDefaultActiveFields(i),
-      query: DEFAULT_QUERY_VALUE
+      query: getDefaultQueryValue(i)
     });
     appliedState.tableNames = newTableNames;
     appliedState.complexityLabels = parseCommaList(complexityLabelsInput);
@@ -1349,7 +1353,7 @@
     currentTableDefs.forEach((def, i) => {
       tableSwitches[i].checked = true;
       syncSlushBucket(i, def, getDefaultActiveFields(i));
-      tableQueryTextareas[i].value = DEFAULT_QUERY_VALUE;
+      tableQueryTextareas[i].value = getDefaultQueryValue(i);
     });
     hideConfigError();
   };
