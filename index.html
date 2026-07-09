@@ -707,6 +707,10 @@
         <label for="complexityLabelsInput">Task complexity labels (comma-separated)</label>
         <textarea id="complexityLabelsInput" rows="3"></textarea>
         <div class="hint">These become the vertical tabs on each table and the options in each row's "Task complexity" dropdown. Must be non-empty, non-blank, and unique.</div>
+
+        <label for="serviceNowApiUrlInput">ServiceNow API URL / REST endpoint</label>
+        <textarea id="serviceNowApiUrlInput" rows="2"></textarea>
+        <div class="hint">The Scripted REST API endpoint Load Live Data calls first. Starts out set to SERVICENOW_API_URL from config.js; edit here to override without touching that file. If this endpoint fails, Load Live Data automatically retries once against the config.js value.</div>
       </div>
       <div id="tableConfigPanel" hidden>
         <ul class="accordion" id="tablesAccordion"></ul>
@@ -895,6 +899,7 @@
   const queriesAccordion = document.getElementById('queriesAccordion');
   const tableNamesInput = document.getElementById('tableNamesInput');
   const complexityLabelsInput = document.getElementById('complexityLabelsInput');
+  const serviceNowApiUrlInput = document.getElementById('serviceNowApiUrlInput');
 
   modalTabBtns.forEach(btn => {
     btn.onclick = () => {
@@ -925,7 +930,8 @@
       activeFields: getDefaultActiveFields(i),
       query: DEFAULT_QUERY_VALUE
     })),
-    complexityLabels: DEFAULT_COMPLEXITY_LABELS.slice()
+    complexityLabels: DEFAULT_COMPLEXITY_LABELS.slice(),
+    serviceNowApiUrl: SERVICENOW_API_URL
   };
 
   // Reflects whichever table list the accordion was last built from
@@ -1278,6 +1284,7 @@
     document.querySelectorAll('.accordion-header').forEach(h => h.classList.remove('open'));
     tableNamesInput.value = appliedState.tableNames.join(', ');
     complexityLabelsInput.value = appliedState.complexityLabels.join(', ');
+    serviceNowApiUrlInput.value = appliedState.serviceNowApiUrl;
     modalTabBtns.forEach(b => b.classList.remove('active'));
     modalTabBtns[0].classList.add('active');
     pageSettingsPanel.hidden = false;
@@ -1323,6 +1330,7 @@
     });
     appliedState.tableNames = newTableNames;
     appliedState.complexityLabels = parseCommaList(complexityLabelsInput);
+    appliedState.serviceNowApiUrl = serviceNowApiUrlInput.value.trim();
 
     configModalOverlay.hidden = true;
     renderMainPage();
@@ -1706,27 +1714,42 @@
   // out, so a failed refresh leaves that table blank ("Data is not loaded")
   // instead of showing stale rows.
   //
-  // Request: sysparm_tables / sysparm_querys / sysparm_fields are each
-  // repeated once per table (via URLSearchParams.append, not one
-  // comma-joined value) — the API reads them as three parallel arrays, so
-  // tableNames[i]/queries[i]/fieldNames[i] all describe the same table.
-  // Response: { "result": { "<table name>": [ {field: value, ...}, ... ] } }
-  // — an object keyed by table name, not one flat array, so records from
-  // different tables never get mixed up.
+  // Tries appliedState.serviceNowApiUrl (Configuration → Page Settings)
+  // first; if that request fails for any reason, retries once against
+  // SERVICENOW_API_URL from config.js before giving up.
+  //
+  // Request: {sysparm_tables}/{sysparm_querys}/{sysparm_fields} are literal
+  // path-parameter placeholders in the URL (not a ?query string). Each one
+  // is a "|"-joined list with one entry per table, so tableNames[i] /
+  // queries[i] / fieldLists[i] all describe the same table; within
+  // {sysparm_fields}, each table's own entry is further "," joined (its
+  // list of field names). E.g. for 2 tables:
+  //   .../problem|incident/active=true|active=true/number,short_description|number,priority
+  // Response: { "result": { "task_data": { "<table name>": [ {...}, ... ] } } }
   const loadLiveDataBtn = document.getElementById('loadLiveDataBtn');
 
-  function buildLiveDataParams(activeIndexes) {
-    const params = new URLSearchParams();
+  // Substitutes the three path-parameter placeholders in urlTemplate with
+  // "|"-joined (and, for fields, additionally ","-joined per table) values
+  // — see the contract note above. encodeURIComponent escapes characters
+  // like "|", ",", "^", "=" so they survive as literal path text instead of
+  // being misread as URL syntax; the server gets them back decoded.
+  function buildLiveDataUrl(urlTemplate, activeIndexes) {
+    const tableNames = [];
+    const queryStrings = [];
+    const fieldLists = [];
     activeIndexes.forEach(tableIndex => {
       const def = getTableDefs()[tableIndex];
       const fieldNames = getActiveFieldNames(tableIndex)
         .concat(['number', 'work_notes', 'comments'])
         .filter((name, i, arr) => arr.indexOf(name) === i);
-      params.append('sysparm_tables', def.name);
-      params.append('sysparm_querys', appliedState.tables[tableIndex].query);
-      params.append('sysparm_fields', fieldNames.join(','));
+      tableNames.push(def.name);
+      queryStrings.push(appliedState.tables[tableIndex].query);
+      fieldLists.push(fieldNames.join(','));
     });
-    return params;
+    return urlTemplate
+      .replace('{sysparm_tables}', encodeURIComponent(tableNames.join('|')))
+      .replace('{sysparm_querys}', encodeURIComponent(queryStrings.join('|')))
+      .replace('{sysparm_fields}', encodeURIComponent(fieldLists.join('|')));
   }
 
   // Converts one table's raw records into this app's row shape. Task
@@ -1748,9 +1771,22 @@
     });
   }
 
+  // Fetches from one endpoint and returns its task_data object (throws on
+  // any failure — caller decides whether to retry against the fallback).
+  async function fetchTaskData(urlTemplate, activeIndexes) {
+    const url = buildLiveDataUrl(urlTemplate, activeIndexes);
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('HTTP ' + response.status);
+    const data = await response.json();
+    if (!data.result || !data.result.task_data) throw new Error('Response had no "result.task_data" object.');
+    return data.result.task_data;
+  }
+
   loadLiveDataBtn.onclick = async () => {
-    if (!SERVICENOW_API_URL) {
-      alert('Set SERVICENOW_API_URL in config.js to your Scripted REST API endpoint first.');
+    const primaryUrl = appliedState.serviceNowApiUrl;
+    const fallbackUrl = SERVICENOW_API_URL;
+    if (!primaryUrl && !fallbackUrl) {
+      alert('Set the ServiceNow API URL in Configuration → Page Settings (or SERVICENOW_API_URL in config.js) first.');
       return;
     }
 
@@ -1768,17 +1804,37 @@
 
     const loaded = [];
     const skipped = [];
+    let taskData = null;
+    let usedFallback = false;
 
-    try {
-      const params = buildLiveDataParams(activeIndexes);
-      const response = await fetch(SERVICENOW_API_URL + '?' + params.toString());
-      if (!response.ok) throw new Error('HTTP ' + response.status);
-      const data = await response.json();
-      if (!data.result || typeof data.result !== 'object') throw new Error('Response had no "result" object.');
+    if (primaryUrl) {
+      try {
+        taskData = await fetchTaskData(primaryUrl, activeIndexes);
+      } catch (primaryErr) {
+        if (fallbackUrl && fallbackUrl !== primaryUrl) {
+          try {
+            taskData = await fetchTaskData(fallbackUrl, activeIndexes);
+            usedFallback = true;
+          } catch (fallbackErr) {
+            skipped.push('Configured endpoint failed (' + primaryErr.message + '); config.js fallback also failed (' + fallbackErr.message + ').');
+          }
+        } else {
+          skipped.push('Request failed: ' + primaryErr.message);
+        }
+      }
+    } else {
+      try {
+        taskData = await fetchTaskData(fallbackUrl, activeIndexes);
+        usedFallback = true;
+      } catch (err) {
+        skipped.push('Request failed: ' + err.message);
+      }
+    }
 
+    if (taskData) {
       activeIndexes.forEach(tableIndex => {
         const def = getTableDefs()[tableIndex];
-        const records = data.result[def.name];
+        const records = taskData[def.name];
         if (!Array.isArray(records)) {
           skipped.push(def.name + ': missing from the response.');
           return;
@@ -1787,8 +1843,6 @@
         tableRowsStore[tableIndex] = rows;
         loaded.push(def.name + ' (' + rows.length + ' row' + (rows.length === 1 ? '' : 's') + ')');
       });
-    } catch (err) {
-      skipped.push('Request failed: ' + err.message);
     }
 
     loadLiveDataBtn.disabled = false;
@@ -1796,6 +1850,7 @@
     renderMainPage();
 
     const parts = [];
+    if (usedFallback) parts.push('Used the config.js fallback endpoint (the configured one failed).');
     if (loaded.length > 0) parts.push('Loaded:\n' + loaded.map(s => '• ' + s).join('\n'));
     if (skipped.length > 0) parts.push('Skipped:\n' + skipped.map(s => '• ' + s).join('\n'));
     alert(parts.length > 0 ? parts.join('\n\n') : 'No data returned.');

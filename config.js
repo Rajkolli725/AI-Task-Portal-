@@ -14,13 +14,15 @@ const DEFAULT_COMPLEXITY_LABELS = ['Easy', 'Intermediate', 'Complex', 'Blocked',
 // Starting value for every table's Query textarea on the Queries tab.
 const DEFAULT_QUERY_VALUE = 'active=true';
 
-// Your ServiceNow Scripted REST API's full endpoint URL (no auth, CORS
-// allowed for this page's origin). Leave blank until that API exists —
-// "Load Live Data" checks for that and tells you to set this first.
-// Called as a GET request with query-string parameters:
-//   ?sysparm_table=<table name>&sysparm_query=<encoded query>&sysparm_fields=<comma-separated, no spaces>
-// Expected JSON response shape: { "result": [ { <field>: <value>, ... }, ... ] }
-const SERVICENOW_API_URL = '';
+// Starting value for the "ServiceNow API URL / REST endpoint" field on the
+// Configuration modal's Page Settings tab — edit it there to override
+// without touching this file. Also used as the fallback endpoint: if the
+// Configuration modal's current value fails, Load Live Data retries once
+// against this one. {sysparm_tables}/{sysparm_querys}/{sysparm_fields} are
+// literal path-parameter placeholders your Scripted REST API resource
+// defines — Load Live Data substitutes them, it doesn't append a ?query
+// string.
+const SERVICENOW_API_URL = 'https://huntoil.service-now.com/api/ho/task_triaging/{sysparm_tables}/{sysparm_querys}/{sysparm_fields}';
 
 // Real field lists pulled from the ServiceNow table XML exports, with
 // system fields (sys_*) excluded and "number" pulled out separately since
