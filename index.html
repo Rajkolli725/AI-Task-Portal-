@@ -1662,6 +1662,11 @@
     contentArea.appendChild(contentRow);
   }
 
+  // ' (n)' once that table has loaded rows (even 0), '' before any load.
+  function rowCountLabel(tableIndex) {
+    return tableRowsStore[tableIndex] ? ' (' + tableRowsStore[tableIndex].length + ')' : '';
+  }
+
   function renderTabs() {
     const activeIndexes = getActiveTableIndexes();
     tableTabs.innerHTML = '';
@@ -1679,13 +1684,13 @@
 
     const tableDefs = getTableDefs();
     tableControls.style.display = '';
-    tableNameHeading.textContent = tableDefs[selectedTableIndex].name;
+    tableNameHeading.textContent = tableDefs[selectedTableIndex].name + rowCountLabel(selectedTableIndex);
 
     activeIndexes.forEach(i => {
       const btn = document.createElement('button');
       btn.className = 'table-tab-btn' + (i === selectedTableIndex ? ' active' : '');
       btn.style.background = TAB_COLORS[i % TAB_COLORS.length];
-      btn.textContent = tableDefs[i].name;
+      btn.textContent = tableDefs[i].name + rowCountLabel(i);
       btn.onclick = () => {
         selectedTableIndex = i;
         selectedCategory = 'ALL';
@@ -1752,6 +1757,16 @@
       .replace('{sysparm_fields}', encodeURIComponent(fieldLists.join('|')));
   }
 
+  // ServiceNow rich-text fields (description, comments, work_notes, ...)
+  // come back as HTML. DOMParser gives it a null browsing context, so
+  // parsing untrusted markup here never fetches resources or runs scripts —
+  // unlike assigning to a live/detached div's innerHTML.
+  function htmlToText(html) {
+    if (!html) return '';
+    const text = new DOMParser().parseFromString(html, 'text/html').body.textContent || '';
+    return text.replace(/\s+/g, ' ').trim();
+  }
+
   // Converts one table's raw records into this app's row shape. Task
   // complexity/About/Implementation Guidance have no ServiceNow
   // equivalent, so live rows start with those blank.
@@ -1759,7 +1774,7 @@
     const def = getTableDefs()[tableIndex];
     return records.map((record, i) => {
       const values = {};
-      def.fieldNames.forEach(name => { values[name] = record[name] == null ? '' : String(record[name]); });
+      def.fieldNames.forEach(name => { values[name] = record[name] == null ? '' : htmlToText(String(record[name])); });
       return {
         id: tableIndex + '-' + i,
         recordNumber: record.number == null ? '' : String(record.number),
