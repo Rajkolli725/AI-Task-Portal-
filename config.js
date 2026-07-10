@@ -21,14 +21,23 @@ const DEFAULT_COMPLEXITY_LABELS = ['Easy', 'Intermediate', 'Complex', 'Blocked',
 // DEFAULT_QUERY_VALUES below (e.g. a table added beyond the default 5).
 const DEFAULT_QUERY_VALUE = 'active=true';
 // Starting value for each default table's Query textarea on the Queries
-// tab, position-matched to DEFAULT_TABLE_NAMES above. For incident,
-// excludes state 6 (Resolved).
+// tab, position-matched to DEFAULT_TABLE_NAMES above. Scoped to a fixed
+// list of assignment_group sys_ids and, for incident, excluding state 6
+// (Resolved).
+const DEFAULT_ASSIGNMENT_GROUP_SYS_IDS = [
+  'fd0c521f3b432a98ea90087aa5e45a06', '9cdeba183363ead46f671fa19e5c7ba7', '84181fe23b27c250ea90087aa5e45af0',
+  '93585b263b27c250ea90087aa5e45af8', 'f9aa6d5deb4e96504475f27bbad0cd6f', '211b05b03340d6906f671fa19e5c7b39',
+  '8eb773793b722258ea90087aa5e45a57', 'f6b0ce534709be906512bf66706d43b7', '76a8066197f9d150c79bfbe3a253afb1',
+  '19b26d843bf81210ea90087aa5e45a7c', 'ff4d41379719d190c79bfbe3a253aff4', 'f31f7a1c33a3ead46f671fa19e5c7bfa',
+  '5ee74940b70022108d4406dd1e11a918', '8a2339b79799d190c79bfbe3a253afe3', '816f76dc33a3ead46f671fa19e5c7bd2'
+];
+const DEFAULT_ASSIGNMENT_GROUP_QUERY = 'assignment_group.sys_idIN' + DEFAULT_ASSIGNMENT_GROUP_SYS_IDS.join(',');
 const DEFAULT_QUERY_VALUES = [
-  'active=true',
-  'active=true',
-  'active=true^state!=6',
-  'active=true',
-  'active=true'
+  'active=true^' + DEFAULT_ASSIGNMENT_GROUP_QUERY,
+  'active=true^' + DEFAULT_ASSIGNMENT_GROUP_QUERY,
+  'active=true^' + DEFAULT_ASSIGNMENT_GROUP_QUERY + '^state!=6',
+  'active=true^' + DEFAULT_ASSIGNMENT_GROUP_QUERY,
+  'active=true^' + DEFAULT_ASSIGNMENT_GROUP_QUERY
 ];
 
 // Starting value for the "ServiceNow API URL / REST endpoint" field on the
