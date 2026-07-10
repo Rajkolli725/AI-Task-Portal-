@@ -206,6 +206,7 @@
     gap: 8px;
     flex: 1;
     min-height: 0;
+    min-width: 0;
   }
   .data-table-wrap {
     flex: 1;
@@ -1554,10 +1555,12 @@
     return wrap;
   }
 
-  // Vertical (category) tabs stay visible on the left at all times — even
-  // with no active table selected or no data loaded yet — so the layout
-  // never jumps as tables load in and out. Every branch below appends its
-  // main-pane content into contentRow before appending renderCategoryTabs().
+  // Vertical (category) tabs sit on the right at all times — even with no
+  // active table selected or no data loaded yet — so the layout never jumps
+  // as tables load in and out. table-content-row's min-width: 0 (plus
+  // data-table-wrap's own flex:1/min-width:0/overflow:auto) keeps a wide
+  // table's horizontal scroll contained to data-table-wrap itself, instead
+  // of blowing out the page and dragging these tabs off-screen with it.
   function renderContent() {
     contentArea.innerHTML = '';
 
@@ -1569,8 +1572,8 @@
       empty.className = 'empty';
       empty.style.flex = '1';
       empty.textContent = 'No active tables. Enable a table in Configuration to see it here.';
-      contentRow.appendChild(renderCategoryTabs());
       contentRow.appendChild(empty);
+      contentRow.appendChild(renderCategoryTabs());
       contentArea.appendChild(contentRow);
       return;
     }
@@ -1580,8 +1583,8 @@
       empty.className = 'empty';
       empty.style.flex = '1';
       empty.textContent = 'Data is not loaded. Load data to start triaging.';
-      contentRow.appendChild(renderCategoryTabs());
       contentRow.appendChild(empty);
+      contentRow.appendChild(renderCategoryTabs());
       contentArea.appendChild(contentRow);
       return;
     }
@@ -1598,8 +1601,6 @@
       }
       return fieldNames.includes(selectedField) && row.values[selectedField].toLowerCase().includes(searchTerm);
     });
-
-    contentRow.appendChild(renderCategoryTabs());
 
     if (rows.length === 0) {
       const empty = document.createElement('div');
@@ -1706,6 +1707,7 @@
       contentRow.appendChild(wrap);
     }
 
+    contentRow.appendChild(renderCategoryTabs());
     contentArea.appendChild(contentRow);
   }
 
