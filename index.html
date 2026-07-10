@@ -1388,6 +1388,12 @@
   let selectedCategory = 'ALL';
   let selectedField = 'ALL';
 
+  // Default Task complexity for a row before anyone triages it. Deliberately
+  // kept out of appliedState.complexityLabels so it never gets a horizontal
+  // category tab of its own (renderCategoryTabs only tabs complexityLabels) —
+  // it's still selectable per-row and always shows up under the "All" tab.
+  const UNKNOWN_COMPLEXITY = 'Unknown';
+
   // A table has no entry here until data is actually loaded into it (via
   // Load Live Data or Load Previous) — renderContent() shows a "Data is not
   // loaded" message for any table missing an entry, instead of ever
@@ -1590,7 +1596,8 @@
         // Page Settings labels can change after rows already exist; if a
         // row's stored complexity no longer matches any current label,
         // fall back to the first one so the dropdown never shows a mismatch.
-        if (!appliedState.complexityLabels.includes(row.complexity)) {
+        // Unknown (the untriaged default) is exempt — it's valid forever.
+        if (row.complexity !== UNKNOWN_COMPLEXITY && !appliedState.complexityLabels.includes(row.complexity)) {
           row.complexity = appliedState.complexityLabels[0];
         }
         const tr = document.createElement('tr');
@@ -1614,7 +1621,7 @@
 
         const complexityTd = document.createElement('td');
         const select = document.createElement('select');
-        appliedState.complexityLabels.forEach(label => {
+        [UNKNOWN_COMPLEXITY].concat(appliedState.complexityLabels).forEach(label => {
           const opt = document.createElement('option');
           opt.value = label;
           opt.textContent = label;
@@ -1782,7 +1789,7 @@
       return {
         id: tableIndex + '-' + i,
         recordNumber: record.number == null ? '' : String(record.number),
-        complexity: '',
+        complexity: UNKNOWN_COMPLEXITY,
         about: '',
         implementationGuidance: '',
         values
