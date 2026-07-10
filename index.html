@@ -379,6 +379,20 @@
     overflow: hidden;
     z-index: 50;
   }
+  .dropdown-user-info {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .dropdown-user-name {
+    font-weight: 700;
+    font-size: 14px;
+  }
+  .dropdown-user-email {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 2px;
+    word-break: break-all;
+  }
   .dropdown-item {
     display: block;
     width: 100%;
@@ -653,8 +667,12 @@
     <h1>AI Task Portal</h1>
     <div class="header-right">
       <div class="avatar-wrap" id="avatarWrap">
-        <button class="avatar" id="avatarBtn" aria-haspopup="true" aria-expanded="false">RK</button>
+        <button class="avatar" id="avatarBtn" aria-haspopup="true" aria-expanded="false"></button>
         <div class="dropdown-menu" id="dropdownMenu" hidden>
+          <div class="dropdown-user-info">
+            <div class="dropdown-user-name" id="dropdownUserName"></div>
+            <div class="dropdown-user-email" id="dropdownUserEmail"></div>
+          </div>
           <button class="dropdown-item" id="configMenuItem">Configuration</button>
         </div>
       </div>
@@ -771,6 +789,13 @@
   const avatarBtn = document.getElementById('avatarBtn');
   const dropdownMenu = document.getElementById('dropdownMenu');
   const configMenuItem = document.getElementById('configMenuItem');
+  const dropdownUserName = document.getElementById('dropdownUserName');
+  const dropdownUserEmail = document.getElementById('dropdownUserEmail');
+
+  // CURRENT_USER_NAME/CURRENT_USER_EMAIL come from config.js.
+  avatarBtn.textContent = CURRENT_USER_NAME.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  dropdownUserName.textContent = CURRENT_USER_NAME;
+  dropdownUserEmail.textContent = CURRENT_USER_EMAIL;
 
   function closeDropdown() {
     dropdownMenu.hidden = true;

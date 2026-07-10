@@ -7,6 +7,12 @@
 // Cycled across table tabs and category tabs so each one is visually distinct.
 const TAB_COLORS = ['#f5c359', '#5fd68a', '#6d8bff', '#ff6d6d', '#c77dff', '#4fd1c5', '#f5789a', '#9cd67d', '#7dc4f5', '#f5a45f'];
 
+// Shown in the avatar dropdown (name, email) and used to derive the
+// avatar's initials. No login system exists yet, so this is just a static
+// display value — edit it here if the portal is used by someone else.
+const CURRENT_USER_NAME = 'Raj Kolli';
+const CURRENT_USER_EMAIL = 'rkolli@huntoil.com';
+
 // Table names must be lowercase letters, digits, and underscores only
 // (enforced by TABLE_NAME_PATTERN in index.html).
 const DEFAULT_TABLE_NAMES = ['problem', 'rm_story', 'incident', 'change_request', 'sc_task'];
