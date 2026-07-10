@@ -21,15 +21,14 @@ const DEFAULT_COMPLEXITY_LABELS = ['Easy', 'Intermediate', 'Complex', 'Blocked',
 // DEFAULT_QUERY_VALUES below (e.g. a table added beyond the default 5).
 const DEFAULT_QUERY_VALUE = 'active=true';
 // Starting value for each default table's Query textarea on the Queries
-// tab, position-matched to DEFAULT_TABLE_NAMES above. Scoped to the
-// Huntoil Support assignment group (assignment_groupDYNAMIC...) and, for
-// incident, excluding state 6 (Resolved).
+// tab, position-matched to DEFAULT_TABLE_NAMES above. For incident,
+// excludes state 6 (Resolved).
 const DEFAULT_QUERY_VALUES = [
-  'active=true^assignment_groupDYNAMICd6435e965f510100a9ad2572f2b47744',
-  'active=true^assignment_groupDYNAMICd6435e965f510100a9ad2572f2b47744',
-  'active=true^assignment_groupDYNAMICd6435e965f510100a9ad2572f2b47744^state!=6',
-  'active=true^assignment_groupDYNAMICd6435e965f510100a9ad2572f2b47744',
-  'active=true^assignment_groupDYNAMICd6435e965f510100a9ad2572f2b47744'
+  'active=true',
+  'active=true',
+  'active=true^state!=6',
+  'active=true',
+  'active=true'
 ];
 
 // Starting value for the "ServiceNow API URL / REST endpoint" field on the
