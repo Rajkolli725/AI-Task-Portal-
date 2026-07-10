@@ -1569,8 +1569,8 @@
       empty.className = 'empty';
       empty.style.flex = '1';
       empty.textContent = 'No active tables. Enable a table in Configuration to see it here.';
-      contentRow.appendChild(empty);
       contentRow.appendChild(renderCategoryTabs());
+      contentRow.appendChild(empty);
       contentArea.appendChild(contentRow);
       return;
     }
@@ -1580,8 +1580,8 @@
       empty.className = 'empty';
       empty.style.flex = '1';
       empty.textContent = 'Data is not loaded. Load data to start triaging.';
-      contentRow.appendChild(empty);
       contentRow.appendChild(renderCategoryTabs());
+      contentRow.appendChild(empty);
       contentArea.appendChild(contentRow);
       return;
     }
@@ -1598,6 +1598,8 @@
       }
       return fieldNames.includes(selectedField) && row.values[selectedField].toLowerCase().includes(searchTerm);
     });
+
+    contentRow.appendChild(renderCategoryTabs());
 
     if (rows.length === 0) {
       const empty = document.createElement('div');
@@ -1704,7 +1706,6 @@
       contentRow.appendChild(wrap);
     }
 
-    contentRow.appendChild(renderCategoryTabs());
     contentArea.appendChild(contentRow);
   }
 
