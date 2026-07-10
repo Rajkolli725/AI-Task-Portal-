@@ -1715,7 +1715,7 @@
 
         fieldNames.forEach(name => {
           const td = document.createElement('td');
-          if (name === 'description') td.className = 'cell-clamp cell-description';
+          if (name === 'description' || name === 'acceptance_criteria') td.className = 'cell-clamp cell-description';
           else if (name === 'short_description') td.className = 'cell-clamp cell-short-description';
           td.textContent = row.values[name];
           tr.appendChild(td);
