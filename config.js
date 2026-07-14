@@ -13,9 +13,6 @@ const TAB_COLORS = ['#f5c359', '#5fd68a', '#6d8bff', '#ff6d6d', '#c77dff', '#4fd
 const CURRENT_USER_NAME = 'Raj Kolli';
 const CURRENT_USER_EMAIL = 'rkolli@huntoil.com';
 
-// Model the Triage button calls via the Claude API (Messages API model id).
-const CLAUDE_MODEL = 'claude-sonnet-5';
-
 // Table names must be lowercase letters, digits, and underscores only
 // (enforced by TABLE_NAME_PATTERN in index.html).
 const DEFAULT_TABLE_NAMES = ['problem', 'rm_story', 'incident', 'change_request', 'sc_task'];

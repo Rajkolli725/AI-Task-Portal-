@@ -718,7 +718,6 @@
         <button class="secondary" id="loadPreviousDataBtn">Load Previous</button>
         <input type="file" id="loadPreviousInput" accept=".xlsx" hidden>
         <button class="secondary" id="loadLiveDataBtn">Load Live Data</button>
-        <button class="secondary" id="triageBtn">Triage</button>
         <button id="saveBtn">Save</button>
       </div>
     </div>
@@ -1786,183 +1785,6 @@
 
   searchInput.addEventListener('input', renderContent);
 
-  const triageBtn = document.getElementById('triageBtn');
-
-  // --- Triage: send every untriaged row (complexity still Unknown) to
-  // Claude, which applies the categorization rules below and returns a
-  // Task complexity, a one-line About summary, and (when warranted)
-  // Implementation Guidance. Runs across every loaded active table, same
-  // scope as Load Live Data / Save.
-  //
-  // No backend exists to hold an API key server-side, so the key is only
-  // ever kept in this variable — asked for once per browser tab (via
-  // prompt(), never written to config.js or localStorage) and gone on
-  // reload. anthropic-dangerous-direct-browser-access lets the Messages
-  // API accept a direct browser call at all; that name is a deliberate
-  // warning from Anthropic that shipping a key to the browser is not
-  // meant for production use, only for cases like this one where there's
-  // no server to keep it behind.
-  let claudeApiKey = null;
-
-  const TRIAGE_SYSTEM_PROMPT = [
-    'You triage ServiceNow task/story records for an IT team. Apply these rules in priority order — the first matching rule wins:',
-    '',
-    'Priority 1 — CoreX: if Assignment group contains "CoreX" (case-insensitive), categorize as CoreX. Always check this first, before anything else.',
-    '',
-    'Priority 2 — Blocked: categorize as Blocked if any of these is true:',
-    '- Blocked = true',
-    '- Work notes or Additional comments mention an SLA breach (e.g. contains "breached")',
-    '- State means "On Hold"',
-    '- State means "Pending" AND this is a sc_task with a non-empty Related story',
-    '',
-    'Priority 3 — Exclude: if this is a sc_task with a non-empty Related story and it is NOT Blocked (per Priority 2), set exclude=true and stop — its related story handles the work, so it needs no category, About, or Implementation Guidance.',
-    '',
-    'Otherwise, categorize into exactly one of Easy, Intermediate, or Complex:',
-    '- Easy: the ask is simple enough for someone with only navigation + user admin knowledge (e.g. adding a picklist value, creating a service account, updating a distribution list, making a field visible via Form Layout). Requirements are specific and self-contained, no ambiguity. No scripting, Flow Designer, Business Rules, or catalog item creation needed.',
-    '- Intermediate: requires Flow Designer, a Client Script, a Business Rule, an ACL change, SLA config, an email notification template edit, or catalog item creation. Requirements and acceptance criteria are clear and testable. A trainee who just passed ServiceNow Administration training could execute it with minimal guidance.',
-    '- Complex: requires cross-platform integration (AD, Solarwinds, Rapid7, Tanium, SailPoint, ManageEngine, ControlUp, MS Teams, or similar), a major form/workspace rewrite affecting multiple teams, strategic automation (typically 15-20 story points), large-scale data migration, process/governance redesign requiring stakeholder sign-off, or an architectural trade-off only an experienced developer can evaluate.',
-    '',
-    'Regardless of which of those three it lands in, if requirements are unclear or incomplete — description is blank/a one-liner/a placeholder, no acceptance criteria for non-trivial work, references a missing attachment/image, a circular or untestable acceptance criterion, phrased as "needs research" or "determine appropriate solution", or large story points (8+) with no design detail — still pick the closest-fitting category above, but also write 4-7 specific clarifying questions into Implementation Guidance, covering scope, acceptance criteria, technical approach, stakeholders, edge cases, and timeline.',
-    '',
-    'If Complex, Implementation Guidance should also include concrete Sr. Dev implementation tips, in addition to any clarifying questions.',
-    '',
-    'Always write a one-line synthesized summary of the actual ask into About, regardless of category or exclude status — except when exclude is true, where About must be blank.',
-    '',
-    'Call the categorize_task tool with your result. Base every judgment only on the fields given — never invent facts not present in the record.'
-  ].join('\n');
-
-  const TRIAGE_TOOL = {
-    name: 'categorize_task',
-    description: 'Categorize a single ServiceNow record per the triage rules.',
-    input_schema: {
-      type: 'object',
-      properties: {
-        exclude: { type: 'boolean', description: 'true only for Priority 3 (a sc_task with a related story, not Blocked) — false for everything else' },
-        complexity: { type: 'string', enum: ['CoreX', 'Blocked', 'Easy', 'Intermediate', 'Complex'], description: 'Required unless exclude is true' },
-        about: { type: 'string', description: 'One-line synthesized summary of the actual ask; blank if exclude is true' },
-        implementationGuidance: { type: 'string', description: 'Blank unless the ask is unclear (clarifying questions) or Complex (clarifying questions + Sr. Dev tips); blank if exclude is true' }
-      },
-      required: ['exclude', 'about', 'implementationGuidance']
-    }
-  };
-
-  // Only sends fields the categorization rules actually reference — not
-  // every field on the record — to keep each call small.
-  function buildTriagePrompt(tableName, row) {
-    const v = row.values;
-    return [
-      ['Table', tableName],
-      ['Short description', v.short_description],
-      ['Description', v.description],
-      ['Acceptance criteria', v.acceptance_criteria],
-      ['Assignment group', v.assignment_group],
-      ['State', v.state],
-      ['Blocked', v.blocked],
-      ['Related story (sc_task only)', v.u_related_story],
-      ['Story points', v.story_points],
-      ['Work notes', v.work_notes],
-      ['Additional comments', v.comments]
-    ]
-      .filter(([, value]) => value !== undefined)
-      .map(([label, value]) => label + ': ' + (value || '(blank)'))
-      .join('\n');
-  }
-
-  async function triageRow(tableName, row) {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': claudeApiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: CLAUDE_MODEL,
-        max_tokens: 1024,
-        system: TRIAGE_SYSTEM_PROMPT,
-        tools: [TRIAGE_TOOL],
-        tool_choice: { type: 'tool', name: 'categorize_task' },
-        messages: [{ role: 'user', content: buildTriagePrompt(tableName, row) }]
-      })
-    });
-    if (!response.ok) {
-      const detail = await response.text().catch(() => '');
-      throw new Error('HTTP ' + response.status + (detail ? ': ' + detail.slice(0, 200) : ''));
-    }
-    const data = await response.json();
-    const toolUse = data.content && data.content.find(block => block.type === 'tool_use');
-    if (!toolUse) throw new Error('Claude did not return a categorize_task result.');
-    return toolUse.input;
-  }
-
-  // Runs `items` through `worker` with at most `limit` in flight at once —
-  // triaging hundreds of rows one at a time would be far too slow, and
-  // firing them all at once risks the API's rate limits. Returns the
-  // number of items whose worker call threw.
-  async function runWithConcurrency(items, limit, worker) {
-    let next = 0;
-    let errorCount = 0;
-    async function lane() {
-      while (next < items.length) {
-        const item = items[next++];
-        try {
-          await worker(item);
-        } catch (err) {
-          errorCount++;
-        }
-      }
-    }
-    await Promise.all(Array.from({ length: Math.min(limit, items.length) }, lane));
-    return errorCount;
-  }
-
-  triageBtn.onclick = async () => {
-    if (!claudeApiKey) {
-      const entered = prompt('Enter your Claude API key (kept only in memory for this browser tab — never saved to disk):');
-      if (!entered) return;
-      claudeApiKey = entered.trim();
-    }
-
-    const toTriage = [];
-    getActiveTableIndexes().filter(i => tableRowsStore[i]).forEach(tableIndex => {
-      const tableName = getTableDefs()[tableIndex].name;
-      tableRowsStore[tableIndex].forEach(row => {
-        if (row.complexity === UNKNOWN_COMPLEXITY) toTriage.push({ tableName, row });
-      });
-    });
-
-    if (toTriage.length === 0) {
-      alert('Nothing to triage — every loaded row already has a Task complexity assigned.');
-      return;
-    }
-
-    triageBtn.disabled = true;
-    let done = 0;
-    triageBtn.textContent = 'Triaging (0/' + toTriage.length + ')...';
-
-    const errorCount = await runWithConcurrency(toTriage, 4, async ({ tableName, row }) => {
-      try {
-        const result = await triageRow(tableName, row);
-        if (!result.exclude) {
-          if (result.complexity) row.complexity = result.complexity;
-          row.about = result.about || '';
-          row.implementationGuidance = result.implementationGuidance || '';
-        }
-      } finally {
-        done++;
-        triageBtn.textContent = 'Triaging (' + done + '/' + toTriage.length + ')...';
-      }
-    });
-
-    triageBtn.disabled = false;
-    triageBtn.textContent = 'Triage';
-    renderContent();
-
-    alert('Triaged ' + (toTriage.length - errorCount) + ' of ' + toTriage.length + ' record' + (toTriage.length === 1 ? '' : 's') + '.' +
-      (errorCount > 0 ? '\n' + errorCount + ' failed (network/API error) — click Triage again to retry just those.' : ''));
-  };
-
   // --- Load Live Data: pull fresh rows from a ServiceNow Scripted REST API
   // in a single request covering every active (ON) table, using each
   // table's own Query (set on the Queries tab) and Selected fields. Each
@@ -1995,12 +1817,11 @@
     const fieldLists = [];
     activeIndexes.forEach(tableIndex => {
       const def = getTableDefs()[tableIndex];
-      // assignment_group/state/blocked/u_related_story/story_points/
-      // sys_created_on are always fetched too — Triage needs them for its
-      // categorization rules even when the user hasn't added them to
-      // Selected fields for display.
+      // work_notes/comments are always fetched too — the row notes popover
+      // needs them even when the user hasn't added them to Selected fields
+      // for display.
       const fieldNames = getActiveFieldNames(tableIndex)
-        .concat(['number', 'work_notes', 'comments', 'assignment_group', 'state', 'blocked', 'u_related_story', 'story_points', 'sys_created_on'])
+        .concat(['number', 'work_notes', 'comments'])
         .filter((name, i, arr) => arr.indexOf(name) === i);
       tableNames.push(def.name);
       queryStrings.push(appliedState.tables[tableIndex].query);
@@ -2033,7 +1854,6 @@
       return {
         id: tableIndex + '-' + i,
         recordNumber: record.number == null ? '' : String(record.number),
-        createdOn: record.sys_created_on == null ? '' : String(record.sys_created_on),
         complexity: UNKNOWN_COMPLEXITY,
         about: '',
         implementationGuidance: '',
